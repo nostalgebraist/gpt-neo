@@ -242,7 +242,7 @@ def model_fn(features, labels, mode, params):
             saver = tf.train.Saver(
                 tf.global_variables(),
                 sharded=True,
-                max_to_keep=10,
+                max_to_keep=3,
                 keep_checkpoint_every_n_hours=2,
                 defer_build=False,
                 save_relative_paths=True)

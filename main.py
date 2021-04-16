@@ -26,6 +26,7 @@ def parse_args():
                         help="If training on GPU, can specify your GPU names in a list - i.e 'device:GPU:0 device:GPU:1'")
     parser.add_argument("--model", type=str, default=None, help="JSON file that contains model parameters.")
     parser.add_argument("--steps_per_checkpoint", type=int, default=5000, help="Save a model checkpoint every X steps.")
+    parser.add_argument("--eval_every_n_checkpoints", type=int, default=1, help="Eval every X checkpoints.")
     parser.add_argument("--auto_layout", action="store_true", help="If set, generates and prints the most memory "
                                                                    "efficient layout according to MTF auto layout.")
     parser.add_argument("--auto_layout_and_mesh_shape", action="store_true",
@@ -214,7 +215,7 @@ def main(args):
                 name=task)
             logger.info(f"Eval task '{task}' results: {eval_results}")
             save_eval_results(task, eval_results)
-    
+
     if args.eval:
         run_eval_tasks()
         if params["eval_steps"] > 0:
@@ -225,7 +226,7 @@ def main(args):
     elif has_predict_or_eval_steps_or_eval_tasks:
         # Eval and train - stop and predict and/or eval every checkpoint
         while current_step < params["train_steps"]:
-            next_checkpoint = min(current_step + args.steps_per_checkpoint,
+            next_checkpoint = min(current_step + (args.steps_per_checkpoint * args.eval_every_n_checkpoints),
                                   params["train_steps"])
 
             estimator.train(input_fn=partial(input_fn, global_step=current_step, eval=False), max_steps=next_checkpoint)
@@ -242,7 +243,7 @@ def main(args):
 
             if eval_tasks:
                 run_eval_tasks()
-                
+
         return
     else:
         # Else, just train

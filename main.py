@@ -36,6 +36,7 @@ def parse_args():
                                                            "starts a new training run")
     parser.add_argument("--predict", action="store_true", help="If set, uses the model to predict rather than train.")
     parser.add_argument("--predict_continue_past_eot", action="store_true", help="Don't stop sampling at EOT token")
+    parser.add_argument("--predict_temperature", type=float, default=0.9, help="predict T")
     parser.add_argument("--eval", action="store_true", help="If set, run model in evaluation mode.")
     parser.add_argument("--prompt", type=str, help="path to .txt file containing a prompt for prediction. If empty, "
                                                    "defaults to unicorns.",
@@ -119,6 +120,7 @@ def main(args):
     params["slow_sampling"] = True if params["moe_layers"] is not None else False
 
     params['predict_continue_past_eot'] = args.predict_continue_past_eot
+    params['predict_temperature'] = predict_temperature
 
     logger.info(f"params = {params}")
 

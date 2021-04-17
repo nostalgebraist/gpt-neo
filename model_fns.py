@@ -97,10 +97,18 @@ def model_fn(features, labels, mode, params):
 
         if not export:
             stop_at_token = None if params.get('predict_continue_past_eot') else params["eos_id"]
+
+            kwargs = {}
+            temperature =  params.get('predict_temperature')
+            if temperature:
+                kwargs['temperature'] = temperature
+
             mtf_samples = sample_autoregressive(
                 inputs, other_features=other_features, params=params, variable_dtype=variable_dtype,
                 remove_partial_sequences=params["remove_partial_sequences"], stop_at_token=stop_at_token,
-                sampling_use_entmax=params['sampling_use_entmax'], max_steps=params["predict_max_steps"])
+                sampling_use_entmax=params['sampling_use_entmax'], max_steps=params["predict_max_steps"],
+                **kwargs
+            )
 
         else:
             with mtf.utils.outside_all_rewrites():

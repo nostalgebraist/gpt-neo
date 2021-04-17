@@ -35,6 +35,9 @@ def model_fn(features, labels, mode, params):
     if params["precision"] == "bfloat16":
         variable_dtype = mtf.VariableDType(master_dtype=tf.bfloat16, slice_dtype=tf.float32,
                                            activation_dtype=tf.bfloat16)
+    elif params["precision"] == "bfloat16_load_to_float16":
+        variable_dtype = mtf.VariableDType(master_dtype=tf.bfloat16, slice_dtype=tf.float32,
+                                           activation_dtype=tf.float16)
     elif params["precision"] == "bfloat16_load":
         variable_dtype = mtf.VariableDType(master_dtype=tf.bfloat16, slice_dtype=tf.float32,
                                            activation_dtype=tf.float32)

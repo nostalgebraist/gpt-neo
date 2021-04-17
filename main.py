@@ -226,14 +226,12 @@ def main(args):
     elif has_predict_or_eval_steps_or_eval_tasks:
         # Eval and train - stop and predict and/or eval every checkpoint
         while current_step < params["train_steps"]:
-            # next_checkpoint = min(current_step + (args.steps_per_checkpoint * args.eval_every_n_checkpoints),
-            #                       params["train_steps"])
             next_eval = args.eval_every * ((current_step // args.eval_every) + 1)
             print(f"next_eval: {next_eval}")
             next_eval = min(next_eval, params["train_steps"])
 
-            estimator.train(input_fn=partial(input_fn, global_step=current_step, eval=False), max_steps=next_checkpoint)
-            current_step = next_checkpoint
+            estimator.train(input_fn=partial(input_fn, global_step=current_step, eval=False), max_steps=next_eval)
+            current_step = next_eval
 
             if params["predict_steps"] > 0:
                 logger.info("Running prediction...")

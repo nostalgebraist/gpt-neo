@@ -35,6 +35,7 @@ def parse_args():
     parser.add_argument("--new", action="store_true", help="If set, deletes previous checkpoint, if it exists, and "
                                                            "starts a new training run")
     parser.add_argument("--predict", action="store_true", help="If set, uses the model to predict rather than train.")
+    parser.add_argument("--predict_continue_past_eot", action="store_true", help="Don't stop sampling at EOT token")
     parser.add_argument("--eval", action="store_true", help="If set, run model in evaluation mode.")
     parser.add_argument("--prompt", type=str, help="path to .txt file containing a prompt for prediction. If empty, "
                                                    "defaults to unicorns.",
@@ -116,6 +117,8 @@ def main(args):
     # Sample quality of MoE models suffers when using the faster sampling method, so default to slow_sampling if
     # moe layers are present
     params["slow_sampling"] = True if params["moe_layers"] is not None else False
+
+    params['predict_continue_past_eot'] = args.predict_continue_past_eot
 
     logger.info(f"params = {params}")
 

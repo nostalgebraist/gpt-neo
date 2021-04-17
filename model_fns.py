@@ -96,9 +96,10 @@ def model_fn(features, labels, mode, params):
         export = params.get("export", False)
 
         if not export:
+            stop_at_token = None if params.get('predict_continue_past_eot') else params["eos_id"]
             mtf_samples = sample_autoregressive(
                 inputs, other_features=other_features, params=params, variable_dtype=variable_dtype,
-                remove_partial_sequences=params["remove_partial_sequences"], stop_at_token=params["eos_id"],
+                remove_partial_sequences=params["remove_partial_sequences"], stop_at_token=stop_at_token,
                 sampling_use_entmax=params['sampling_use_entmax'], max_steps=params["predict_max_steps"])
 
         else:

@@ -180,7 +180,7 @@ def attn(x, scope, n_state, *, attention_type, params, bias, dim_seq, memory_len
         v = mtfparams.compute_v(x)
 
         if is_incremental_inference(context):
-            one_hot = mtf.one_hot(context.position - 1, dim_seq, dtype=variable_dtype.master_dtype)
+            one_hot = mtf.one_hot(context.position - 1, dim_seq, dtype=variable_dtype.activation_dtype)
             inv_one_hot = 1.0 - one_hot
             old_k, old_v = context.get_states(2)
             k = old_k * inv_one_hot + k * one_hot
@@ -315,4 +315,3 @@ def axial_positional_emb(embd_dim, mesh, params, variable_dtype):
     wpe = mtf.reshape(wpe, [axial_dim, embd_dim])
 
     return wpe
-

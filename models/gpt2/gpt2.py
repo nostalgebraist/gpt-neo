@@ -175,7 +175,7 @@ def model(mtf_features, other_features, params, mesh, variable_dtype, context=No
         labels = mtf_features["labels"]
         z_loss = params.get("z_loss", 1e-4)  # an auxiliary loss used to stabilize mtf xentropy
 
-        # Go to full precision for the logits 
+        # Go to full precision for the logits
         logits = mtf.cast(logits, tf.float32)
 
         use_entmax_loss = params.get("entmax_loss", False)
@@ -203,5 +203,5 @@ def model(mtf_features, other_features, params, mesh, variable_dtype, context=No
         loss_batch = None
 
     # Cast back to checkpoint dtype
-    logits = mtf.cast(logits, variable_dtype.master_dtype)
+    logits = mtf.cast(logits, variable_dtype.activation_dtype)
     return logits, loss, loss_batch

@@ -100,8 +100,11 @@ def model_fn(features, labels, mode, params):
 
             kwargs = {}
             temperature =  params.get('predict_temperature')
+            top_k = params.get('predict_top_k')
             if temperature:
                 kwargs['temperature'] = temperature
+            if top_k:
+                kwargs['sampling_keep_top_k'] = top_k
 
             mtf_samples = sample_autoregressive(
                 inputs, other_features=other_features, params=params, variable_dtype=variable_dtype,

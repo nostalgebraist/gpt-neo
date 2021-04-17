@@ -166,9 +166,9 @@ def handle_pred_output(predictions, logger, enc, params, out_name="test"):
             p = p["outputs"]
 
             # remove eos + padding ids from output
-            idx = np.argmax(p == params['eos_id'])
-            if idx > 0:
-                p = p[:idx]
+            # idx = np.argmax(p == params['eos_id'])
+            # if idx > 0:
+            #     p = p[:idx]
             idx = np.argmax(p == params['padding_id'])
             if idx > 0:
                 p = p[:idx]

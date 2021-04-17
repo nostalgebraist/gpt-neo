@@ -120,7 +120,7 @@ def main(args):
     params["slow_sampling"] = True if params["moe_layers"] is not None else False
 
     params['predict_continue_past_eot'] = args.predict_continue_past_eot
-    params['predict_temperature'] = predict_temperature
+    params['predict_temperature'] = args.predict_temperature
 
     logger.info(f"params = {params}")
 

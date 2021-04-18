@@ -33,9 +33,9 @@ class CastFromBFloat16SaverBuilder(BaseSaverBuilder):
         restored = io_ops.restore_v2(filename_tensor, names, slices, dtypes)
         casted = []
         for r, dt, rs in zip(restored, dtypes, restore_specs):
-            c = tf.cast(r, tf.float32) if dt.base_dtype == tf.bfloat16 else r
+            c = tf.cast(r, dt.base_dtype)
             tf.logging.info((dt, dt.base_dtype, tf.bfloat16))
-            tf.logging.info(f"{repr(rs)}\n\t{r.dtype}\n\t{c.dtype}\n")
+            tf.logging.info(f"{repr(r)}\n{repr(c)}\n\n{repr(rs)}\n\t{r.dtype}\n\t{c.dtype}\n")
             casted.append(c)
         return casted
 
@@ -69,6 +69,10 @@ def model_fn(features, labels, mode, params):
     elif params["precision"] == "bfloat16_load":
         variable_dtype = mtf.VariableDType(master_dtype=tf.bfloat16, slice_dtype=tf.float32,
                                            activation_dtype=tf.float32)
+   # elif params["precision"] == "float32_can_load_bfloat16":
+   #     variable_dtype = mtf.VariableDType(master_dtype=tf.float32, slice_dtype=tf.float32,
+   #                                        activation_dtype=tf.float32)
+   #
     else:
         variable_dtype = mtf.VariableDType(master_dtype=tf.float32, slice_dtype=tf.float32, activation_dtype=tf.float32)
 

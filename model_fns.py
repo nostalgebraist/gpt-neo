@@ -73,9 +73,12 @@ def model_fn(features, labels, mode, params):
     elif params["precision"] == "bfloat16_load":
         variable_dtype = mtf.VariableDType(master_dtype=tf.bfloat16, slice_dtype=tf.float32,
                                            activation_dtype=tf.float32)
-    elif params["precision"] == "float32_load_once":
+    elif params["precision"] == "mixed_precision_load_bfloat16_once":
         variable_dtype = mtf.VariableDType(master_dtype=tf.float32, slice_dtype=tf.float32,
-                                           activation_dtype=tf.float32)
+                                           activation_dtype=tf.float16)
+   elif params["precision"] == "mixed_precision":
+       variable_dtype = mtf.VariableDType(master_dtype=tf.float32, slice_dtype=tf.float32,
+                                          activation_dtype=tf.float16)
     else:
         variable_dtype = mtf.VariableDType(master_dtype=tf.float32, slice_dtype=tf.float32, activation_dtype=tf.float32)
 
@@ -293,7 +296,7 @@ def model_fn(features, labels, mode, params):
         if mode == tf.estimator.ModeKeys.TRAIN:
             # Set up the checkpoint server and return the TPUEstimatorSpec
             saver_kwargs = {}
-            if params["precision"] == "float32_load_once":
+            if params["precision"] == "mixed_precision_load_bfloat16_once":
                 saver_kwargs['builder'] = CastFromBFloat16SaverBuilder()
             saver = tf.train.Saver(
                 tf.global_variables(),

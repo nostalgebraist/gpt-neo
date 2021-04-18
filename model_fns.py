@@ -12,6 +12,33 @@ from models.gpt2 import gpt2
 import math
 
 
+from tensorflow.python.training.saver import BaseSaverBuilder
+
+class CastFromBFloat16SaverBuilder(BaseSaverBuilder):
+  # Based on tensorflow.python.training.saver.BulkSaverBuilder.bulk_restore
+  def bulk_restore(self, filename_tensor, saveables, preferred_shard,
+                 restore_sequentially):
+      from tensorflow.python.framework import ops
+      from tensorflow.python.ops import io_ops
+      # Ignored: bulk restore is internally sequential.
+      del restore_sequentially
+      restore_specs = []
+      for saveable in saveables:
+        for spec in saveable.specs:
+          restore_specs.append((spec.name, spec.slice_spec, spec.dtype))
+
+      names, slices, dtypes = zip(*restore_specs)
+      # Load all tensors onto CPU 0 for compatibility with existing code.
+      with ops.device("cpu:0"):
+        restored = io_ops.restore_v2(filename_tensor, names, slices, dtypes)
+        casted = []
+        for r, dt in zip(restored, dtypes):
+            c = tf.cast(r, tf.float32) if dt == tf.bfloat16 else r
+            print(f"{repr(r)}\n\t{r.dtype}\n\t{c.dtype}\n")
+            casted.append(c)
+        return casted
+
+
 def model_fn(features, labels, mode, params):
     # Get global step
     global_step = tf.train.get_global_step()
@@ -263,7 +290,8 @@ def model_fn(features, labels, mode, params):
                 max_to_keep=3,
                 keep_checkpoint_every_n_hours=2,
                 defer_build=False,
-                save_relative_paths=True)
+                save_relative_paths=True,
+                builder=CastFromBFloat16SaverBuilder())
             tf.add_to_collection(tf.GraphKeys.SAVERS, saver)
             saver_listener = mtf.MtfCheckpointSaverListener(lowering)
             saver_hook = tf.train.CheckpointSaverHook(

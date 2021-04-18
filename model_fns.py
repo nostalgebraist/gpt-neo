@@ -76,9 +76,9 @@ def model_fn(features, labels, mode, params):
     elif params["precision"] == "mixed_precision_load_bfloat16_once":
         variable_dtype = mtf.VariableDType(master_dtype=tf.float32, slice_dtype=tf.float32,
                                            activation_dtype=tf.float16)
-   elif params["precision"] == "mixed_precision":
-       variable_dtype = mtf.VariableDType(master_dtype=tf.float32, slice_dtype=tf.float32,
-                                          activation_dtype=tf.float16)
+    elif params["precision"] == "mixed_precision":
+        variable_dtype = mtf.VariableDType(master_dtype=tf.float32, slice_dtype=tf.float32,
+                                           activation_dtype=tf.float16)
     else:
         variable_dtype = mtf.VariableDType(master_dtype=tf.float32, slice_dtype=tf.float32, activation_dtype=tf.float32)
 

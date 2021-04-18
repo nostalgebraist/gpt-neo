@@ -73,10 +73,9 @@ def model_fn(features, labels, mode, params):
     elif params["precision"] == "bfloat16_load":
         variable_dtype = mtf.VariableDType(master_dtype=tf.bfloat16, slice_dtype=tf.float32,
                                            activation_dtype=tf.float32)
-   # elif params["precision"] == "float32_can_load_bfloat16":
-   #     variable_dtype = mtf.VariableDType(master_dtype=tf.float32, slice_dtype=tf.float32,
-   #                                        activation_dtype=tf.float32)
-   #
+    elif params["precision"] == "float32_load_once":
+        variable_dtype = mtf.VariableDType(master_dtype=tf.float32, slice_dtype=tf.float32,
+                                           activation_dtype=tf.float32)
     else:
         variable_dtype = mtf.VariableDType(master_dtype=tf.float32, slice_dtype=tf.float32, activation_dtype=tf.float32)
 
@@ -293,6 +292,9 @@ def model_fn(features, labels, mode, params):
         restore_hook = mtf.MtfRestoreHook(lowering)
         if mode == tf.estimator.ModeKeys.TRAIN:
             # Set up the checkpoint server and return the TPUEstimatorSpec
+            saver_kwargs = {}
+            if params["precision"] == "float32_load_once":
+                saver_kwargs['builder'] = CastFromBFloat16SaverBuilder()
             saver = tf.train.Saver(
                 tf.global_variables(),
                 sharded=True,
@@ -300,7 +302,7 @@ def model_fn(features, labels, mode, params):
                 keep_checkpoint_every_n_hours=2,
                 defer_build=False,
                 save_relative_paths=True,
-                builder=CastFromBFloat16SaverBuilder())
+                **saver_kwargs)
             tf.add_to_collection(tf.GraphKeys.SAVERS, saver)
             saver_listener = mtf.MtfCheckpointSaverListener(lowering)
             saver_hook = tf.train.CheckpointSaverHook(

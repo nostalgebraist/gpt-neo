@@ -19,7 +19,6 @@ def get_optimizer(mesh, loss, params, variable_dtype, inp_var_grads=None):
     global_step = tf.train.get_or_create_global_step() - step_shift
 
     learning_rate = tf.constant(value=params["lr"], shape=[], dtype=variable_dtype.slice_dtype)
-    clip_value = mtf.constant(mesh, params["gradient_clipping"], dtype=variable_dtype.slice_dtype)
 
     if inp_var_grads is None:
         var_grads = mtf.gradients([loss], [v.outputs[0] for v in mesh.graph.trainable_variables])
@@ -31,13 +30,14 @@ def get_optimizer(mesh, loss, params, variable_dtype, inp_var_grads=None):
 
     # decrease LR to final lr (lr*0.1) by this step - defaults to train_steps
     end_step = params.get("lr_decay_end", params["train_steps"])
+    min_lr_frac = params.get('min_lr_frac', 0.1)
 
     if params["lr_decay"] == "linear":
         learning_rate = tf.train.polynomial_decay(
             learning_rate,
             global_step,
             end_step,
-            end_learning_rate=params["lr"]*0.1, # Decrease to 10% of initial LR according to GPT-3 paper
+            end_learning_rate=params["lr"]*min_lr_frac,
             power=1.0,
             cycle=False)
     elif params["lr_decay"] == "cosine":
@@ -87,6 +87,7 @@ def get_optimizer(mesh, loss, params, variable_dtype, inp_var_grads=None):
         )
 
     if params["gradient_clipping"] is not None:
+        clip_value = mtf.constant(mesh, params["gradient_clipping"], dtype=variable_dtype.slice_dtype)
         (var_grads_fp, _) = clip_by_global_norm(var_grads_fp, clip_norm=clip_value)
 
     update_ops = optimizer.apply_grads(var_grads_fp, mesh.graph.trainable_variables)

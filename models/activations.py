@@ -80,7 +80,6 @@ def get_activation_fn(params):
     if "activation_fn" in params:
         activation_fn = params["activation_fn"]
     else:
-        print("Defaulting to GELU activation (see here: https://arxiv.org/abs/1606.08415)")
         activation_fn = "gelu"
 
     if activation_fn in BASE_FNS:
@@ -90,6 +89,3 @@ def get_activation_fn(params):
         return CUSTOM_FNS[activation_fn]
 
     raise ValueError('unknown activation function "activation_fn" in config')
-
-
-

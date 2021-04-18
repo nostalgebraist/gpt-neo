@@ -38,6 +38,7 @@ def parse_args():
     parser.add_argument("--predict_continue_past_eot", action="store_true", help="Don't stop sampling at EOT token")
     parser.add_argument("--predict_temperature", type=float, default=0.9, help="predict T")
     parser.add_argument("--predict_top_k", type=int, default=0, help="predict top_k")
+    parser.add_argument("--predict_max_steps", type=int, default=0, help="predict max_steps")
     parser.add_argument("--eval", action="store_true", help="If set, run model in evaluation mode.")
     parser.add_argument("--prompt", type=str, help="path to .txt file containing a prompt for prediction. If empty, "
                                                    "defaults to unicorns.",
@@ -123,6 +124,7 @@ def main(args):
     params['predict_continue_past_eot'] = args.predict_continue_past_eot
     params['predict_temperature'] = args.predict_temperature
     params['predict_top_k'] = args.predict_top_k
+    params['predict_max_steps'] = args.predict_max_steps
 
     logger.info(f"params = {params}")
 

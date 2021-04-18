@@ -26,8 +26,8 @@ class CastFromBFloat16SaverBuilder(BaseSaverBuilder):
       orig_spec_dtypes = []
       for saveable in saveables:
         for spec in saveable.specs:
-            _f16 = tf.as_dtype('bfloat16_ref')
-            _f32 = tf.as_dtype('float32_ref')
+            _f16 = tf.as_dtype('bfloat16')
+            _f32 = tf.as_dtype('float32')
             expect_dtype = _f16 if (spec.dtype == _f32 and ('adam' not in spec.name)) else spec.dtype
             restore_specs.append((spec.name, spec.slice_spec, expect_dtype))
             orig_spec_dtypes.append(spec.dtype)

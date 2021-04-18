@@ -34,7 +34,7 @@ class CastFromBFloat16SaverBuilder(BaseSaverBuilder):
         casted = []
         for r, dt, rs in zip(restored, dtypes, restore_specs):
             c = tf.cast(r, tf.float32) if dt == tf.bfloat16 else r
-            print((dt, tf.bfloat16))
+            tf.logging.info((dt, tf.bfloat16))
             tf.logging.info(f"{repr(rs)}\n\t{r.dtype}\n\t{c.dtype}\n")
             casted.append(c)
         return casted

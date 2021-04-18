@@ -33,8 +33,8 @@ class CastFromBFloat16SaverBuilder(BaseSaverBuilder):
         restored = io_ops.restore_v2(filename_tensor, names, slices, dtypes)
         casted = []
         for r, dt, rs in zip(restored, dtypes, restore_specs):
-            c = tf.cast(r, tf.float32) if dt == tf.bfloat16_ref else r
-            tf.logging.info((dt, tf.bfloat16_ref))
+            c = tf.cast(r, tf.float32) if dt.base_dtype == tf.bfloat16 else r
+            tf.logging.info((dt, dt.base_dtype, tf.bfloat16))
             tf.logging.info(f"{repr(rs)}\n\t{r.dtype}\n\t{c.dtype}\n")
             casted.append(c)
         return casted

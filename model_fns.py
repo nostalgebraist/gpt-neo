@@ -23,18 +23,22 @@ class CastFromBFloat16SaverBuilder(BaseSaverBuilder):
       # Ignored: bulk restore is internally sequential.
       del restore_sequentially
       restore_specs = []
+      orig_spec_dtypes = []
       for saveable in saveables:
         for spec in saveable.specs:
-          restore_specs.append((spec.name, spec.slice_spec, spec.dtype))
+            _f16 = tf.as_dtype('float16_ref')
+            _f32 = tf.as_dtype('float32_ref')
+            expect_dtype = _f16 if (spec.dtype == _f32 and ('adam' not in spec.name)) else spec.dtypes
+            restore_specs.append((spec.name, spec.slice_spec, expect_dtype))
+            orig_spec_dtypes.append(spec.dtypes)
 
       names, slices, dtypes = zip(*restore_specs)
       # Load all tensors onto CPU 0 for compatibility with existing code.
       with ops.device("cpu:0"):
         restored = io_ops.restore_v2(filename_tensor, names, slices, dtypes)
         casted = []
-        for r, dt, rs in zip(restored, dtypes, restore_specs):
-            c = tf.cast(r, dt.base_dtype)
-            tf.logging.info((dt, dt.base_dtype, tf.bfloat16))
+        for r, dt, rs, osd in zip(restored, dtypes, restore_specs, orig_spec_dtypes):
+            c = tf.cast(r, osd)
             tf.logging.info(f"{repr(r)}\n{repr(c)}\n\n{repr(rs)}\n\t{r.dtype}\n\t{c.dtype}\n")
             casted.append(c)
         return casted

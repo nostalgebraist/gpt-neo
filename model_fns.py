@@ -30,7 +30,7 @@ class CastFromBFloat16SaverBuilder(BaseSaverBuilder):
             _f32 = tf.as_dtype('float32_ref')
             expect_dtype = _f16 if (spec.dtype == _f32 and ('adam' not in spec.name)) else spec.dtype
             restore_specs.append((spec.name, spec.slice_spec, expect_dtype))
-            orig_spec_dtypes.append(spec.dtypes)
+            orig_spec_dtypes.append(spec.dtype)
 
       names, slices, dtypes = zip(*restore_specs)
       # Load all tensors onto CPU 0 for compatibility with existing code.

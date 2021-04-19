@@ -245,7 +245,7 @@ def model_fn(features, labels, mode, params):
 
         if params['noise_scale']:
             gn_small = output_dict['squared_global_norm'] / num_microbatches
-            gn_big = squared_global_norm(var_grads)
+            gn_big = squared_global_norm(var_grads)['squared_global_norm']
 
             B_small = num_microbatches
             B_big = batch_size

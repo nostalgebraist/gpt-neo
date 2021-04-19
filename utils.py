@@ -361,19 +361,22 @@ def serialize_training_step(features, model_fn, batch_dim, num_splits, grad_fn=N
             raise ValueError("Fond trainable variable(s) with None gradient. "
                              "Check if there are trainable variables(s) "
                              "disconnected from the graph.")
-        outputs_grad_fn = {}
         if grad_fn is not None:
             outputs_grad_fn = grad_fn(grads)
+            for k in outputs_grad_fn.keys():
+                if k in outputs.keys():
+                    raise ValueError(f"Shared output key name between model_fn and grad_fn: {repr(k)}")
+            outputs.update(outputs_grad_fn)
 
         output_keys = sorted(outputs.keys())
-        # TODO: add outputs_grad_fn keys, ensure sort order
         cache["output_keys"] = output_keys
 
         ret = []
         ret.append(microbatch_num + 1)
         # The rest of the returned values are "accumulators" that get summed
         # across all microbatches.
-        for t in outputs.values():
+        for k in output_keys:
+            t = outputs[k]
             if smaller_batch_dim in t.shape:
                 # The output contains a batch dimension, so we want to concatenate
                 # across microbatches.

@@ -405,3 +405,7 @@ def serialize_training_step(features, model_fn, batch_dim, num_splits, grad_fn=N
         combined_outputs[k] = v
     combined_grads = while_out[1 + num_outputs:]
     return combined_grads, combined_outputs
+
+
+def squared_global_norm(tensors):
+    return {'squared_global_norm': mtf.reduce_sum(mtf.square(tensors))}

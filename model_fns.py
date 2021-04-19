@@ -3,8 +3,9 @@ import tensorflow.compat.v1 as tf
 from tensorflow.python.tpu import tpu_estimator
 import mesh_tensorflow.transformer as mtf_transformer
 from optimizers import get_optimizer
-from utils import (create_host_call, get_graph_info, remove_batch_from_layout, simd_mesh_setup, add_mode_to_params,
-                   get_batch_size, auto_layout, auto_layout_and_mesh_shape)
+from utils import (create_host_call, get_graph_info, simd_mesh_setup, add_mode_to_params,
+                   get_batch_size, auto_layout, auto_layout_and_mesh_shape, serialize_training_step,
+                   squared_global_norm)
 from models.utils import biasmask_attn_weights
 from tensorflow.python.ops import resources
 from sample import sample_autoregressive
@@ -232,11 +233,27 @@ def model_fn(features, labels, mode, params):
                     f"'{params['model']}' is not a valid model - please select from [GPT]")
 
         # Serialize the training step - Gradients are accumulated locally and reduced once.
-        var_grads, output_dict = mtf.serialize_training_step(
-            mtf_features, serialized_fn, batch_dim, num_microbatches)
+        grad_fn = None
+        if params['noise_scale']:
+            grad_fn = squared_global_norm
+        var_grads, output_dict = serialize_training_step(
+            mtf_features, serialized_fn, batch_dim, num_microbatches, grad_fn=grad_fn)
+
         loss = output_dict["loss"]
         loss_batch = output_dict["loss_batch"]
         logits = output_dict["logits"]
+
+        if params['noise_scale']:
+            gn_small = output_dict['squared_global_norm'] / num_microbatches
+            gn_big = squared_global_norm(var_grads)
+
+            B_small = num_microbatches
+            B_big = batch_size
+
+            G_noise = (B_big * gn_big - B_small * gn_small) / (
+                B_big - B_small
+            )
+            S_noise = (gn_small - gn_big) / (1 / B_small - 1 / B_big)
     else:
         # If we're not splitting into microbatches, return logits & loss as is
         if params["model"] == "GPT":

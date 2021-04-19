@@ -358,17 +358,17 @@ def model_fn(features, labels, mode, params):
 
             training_hooks = [restore_hook, saver_hook]
 
-            if params['noise_scale']:
-                logger_hook = tf.train.LoggingTensorHook(
-                    {
-                        'G_noise': tf_G_noise,
-                        'S_noise': tf_S_noise,
-                        'step': global_step,
-                    },
-                    every_n_iter=params["iterations"],
-                    every_n_secs=None
-                )
-                training_hooks.append(logger_hook)
+            # if params['noise_scale']:
+            #     logger_hook = tf.train.LoggingTensorHook(
+            #         {
+            #             'G_noise': tf_G_noise,
+            #             'S_noise': tf_S_noise,
+            #             'step': global_step,
+            #         },
+            #         every_n_iter=params["iterations"],
+            #         every_n_secs=None
+            #     )
+            #     training_hooks.append(logger_hook)
 
             return tpu_estimator.TPUEstimatorSpec(
                 tf.estimator.ModeKeys.TRAIN,

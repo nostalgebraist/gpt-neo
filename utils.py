@@ -223,20 +223,20 @@ def check_dataset(input_fn, params, global_step=None):
 def auto_layout(graph, mesh_shape, logits, loss):
     layout_rules = mtf.auto_mtf.layout(graph, mesh_shape, [logits, loss])
     print(f"Auto-selected layout:\n{layout_rules}\nRe-initialize graph with selected layout")
-    quit() 
+    quit()
 
 def auto_layout_and_mesh_shape(graph, num_cores, logits, loss):
     layout_rules, mesh_shape = mtf.auto_mtf.layout_and_mesh_shape(graph, num_cores,
                                                                     [logits, loss], max_mesh_shape_dimensions=4)
     print(f"Num cores:\n{num_cores}\nAuto-selected layout:\n{layout_rules}\nAuto-selected mesh shape:\n{mesh_shape}" \
             f"\nRe-initialize graph with selected layout & mesh shape")
-    quit() 
+    quit()
 
 def create_host_call(model_dir):
     """Construct a host_call writing scalar summaries.
 
     Borrowed from t2t.
-    
+
     Args:
         model_dir: String containing path to train
     Returns:
@@ -285,7 +285,106 @@ def create_host_call(model_dir):
     return host_call_fn, [global_step_t] + reshaped_tensors
 
 
-def natural_sort(l): 
-    convert = lambda text: int(text) if text.isdigit() else text.lower() 
-    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ] 
+def natural_sort(l):
+    convert = lambda text: int(text) if text.isdigit() else text.lower()
+    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ]
     return sorted(l, key = alphanum_key)
+
+
+def serialize_training_step(features, model_fn, batch_dim, num_splits, grad_fn=None):
+  """Break the training batch into multiple microbatches.
+  Returns two structures:
+  grads - a list of Tensors corresponding to the gradients on
+     graph.trainable_variables.  These are summed across all microbatches
+  outputs - a dictionary of Tensors corresponding to the output dictionary of
+     model_fn.   Each value is either summed across all microbatches (if it
+     has no batch-dimension), or concatenated across all microbatches to
+     represent the original batch (if it does have a batch-dimension).
+  Args:
+    features: a dictionary of Tensors, each with a batch_dim dimension
+    model_fn: a function from feature dictionary to output dictionary
+      output_dictionary must contain "loss"
+    batch_dim: a Dimension
+    num_splits: an integer dividing batch_dim.size
+  Returns:
+    grads: a list of Tensors corresponding to the gradients on
+      graph.trainable_variables
+    outputs: dictionary of output Tensors summed across microbatches
+  """
+  for v in features.values():
+    mesh = v.mesh
+    graph = v.graph
+  microbatch_dim = Dimension("microbatch", num_splits)
+  smaller_batch_dim = Dimension(batch_dim.name, batch_dim.size // num_splits)
+  cache = {}
+  def select(t, microbatch_num):
+    return gather(
+        replace_dimensions(t, batch_dim, [smaller_batch_dim, microbatch_dim]),
+        microbatch_num, microbatch_dim)
+  def cond_fn(microbatch_num):
+    return less(microbatch_num, num_splits)
+  def body_fn(microbatch_num):
+    """Body function for mtf.while_loop.
+    Args:
+      microbatch_num: a mtf Scalar
+    Returns:
+      a list of mtf Tensors
+    """
+    my_features = {}
+    for k, v in six.iteritems(features):
+      my_features[k] = select(v, microbatch_num)
+
+    outputs = model_fn(my_features)
+
+    grads = gradients(
+        [outputs["loss"]], [v.outputs[0] for v in graph.trainable_variables])
+    if None in grads:
+      for var, var_grad in zip(graph.trainable_variables, grads):
+        if var_grad is None:
+          tf.logging.error(
+              "None gradient for trainable variable %s." % var.outputs[0])
+      raise ValueError("Fond trainable variable(s) with None gradient. "
+                       "Check if there are trainable variables(s) "
+                       "disconnected from the graph.")
+    outputs_grad_fn = {}
+    if grad_fn is not None:
+        outputs_grad_fn = grad_fn(grads)
+
+    output_keys = sorted(outputs.keys())
+    # TODO: add outputs_grad_fn keys, ensure sort order
+    cache["output_keys"] = output_keys
+
+
+    ret = []
+    ret.append(microbatch_num + 1)
+    # The rest of the returned values are "accumulators" that get summed
+    # across all microbatches.
+    for t in outputs.values():
+      if smaller_batch_dim in t.shape:
+        # The output contains a batch dimension, so we want to concatenate
+        # across microbatches.
+        # Here we pad the tensor for each microbatch - summing will complete
+        #  the concatenation.
+        t = einsum(
+            [t, one_hot(microbatch_num, microbatch_dim, dtype=t.dtype)],
+            output_shape=replace_dimensions(
+                t.shape, smaller_batch_dim,
+                [smaller_batch_dim, microbatch_dim]))
+        t = replace_dimensions(
+            t, [smaller_batch_dim, microbatch_dim], batch_dim)
+        ret.append(t)
+      else:
+        # There is no batch dimension.  Sum across all microbatches.
+        ret.append(t)
+    # we also want to sum the gradients.
+    ret.extend(grads)
+    return ret
+  while_out = while_loop(
+      cond_fn, body_fn, [constant(mesh, 0, dtype=tf.int32)],
+      has_accumulators=True)
+  num_outputs = len(cache["output_keys"])
+  combined_outputs = {}
+  for k, v in zip(cache["output_keys"], while_out[1:1 + num_outputs]):
+    combined_outputs[k] = v
+  combined_grads = while_out[1 + num_outputs:]
+  return combined_grads, combined_outputs

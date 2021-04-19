@@ -289,6 +289,9 @@ def model_fn(features, labels, mode, params):
             for g in var_grads:
                 grad_norm = mtf.sqrt(mtf.reduce_sum(mtf.square(g)))
                 mtf.scalar_summary("grads/norm" + g.name[:-2], grad_norm)
+        if params['noise_scale']:
+            mtf.scalar_summary("G_noise", G_noise)
+            mtf.scalar_summary("G_noise", S_noise)
     else:
         # For now, we can only export fully-replicated tensors.
         # This has to be done before lowering or they will not be included in the graph
@@ -306,12 +309,6 @@ def model_fn(features, labels, mode, params):
     lowering = mtf.Lowering(graph, {mesh: mesh_impl}, autostack=True)
     tf_loss = lowering.export_to_tf_tensor(loss)
     tf_loss = tf.cast(tf_loss, tf.float32)
-    if params['noise_scale']:
-        tf_G_noise = lowering.export_to_tf_tensor(G_noise)
-        tf_G_noise = tf.cast(tf_G_noise, tf.float32)
-
-        tf_S_noise = lowering.export_to_tf_tensor(S_noise)
-        tf_S_noise = tf.cast(tf_S_noise, tf.float32)
 
     if mode == tf.estimator.ModeKeys.TRAIN:
         # Use our patched version until mtf updates theirs
@@ -357,18 +354,6 @@ def model_fn(features, labels, mode, params):
                 listeners=[saver_listener])
 
             training_hooks = [restore_hook, saver_hook]
-
-            # if params['noise_scale']:
-            #     logger_hook = tf.train.LoggingTensorHook(
-            #         {
-            #             'G_noise': tf_G_noise,
-            #             'S_noise': tf_S_noise,
-            #             'step': global_step,
-            #         },
-            #         every_n_iter=params["iterations"],
-            #         every_n_secs=None
-            #     )
-            #     training_hooks.append(logger_hook)
 
             return tpu_estimator.TPUEstimatorSpec(
                 tf.estimator.ModeKeys.TRAIN,

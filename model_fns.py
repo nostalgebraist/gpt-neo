@@ -306,6 +306,12 @@ def model_fn(features, labels, mode, params):
     lowering = mtf.Lowering(graph, {mesh: mesh_impl}, autostack=True)
     tf_loss = lowering.export_to_tf_tensor(loss)
     tf_loss = tf.cast(tf_loss, tf.float32)
+    if params['noise_scale']:
+        tf_G_noise = lowering.export_to_tf_tensor(G_noise)
+        tf_G_noise = tf.cast(tf_G_noise, tf.float32)
+
+        tf_S_noise = lowering.export_to_tf_tensor(S_noise)
+        tf_S_noise = tf.cast(tf_S_noise, tf.float32)
 
     if mode == tf.estimator.ModeKeys.TRAIN:
         # Use our patched version until mtf updates theirs
@@ -350,12 +356,26 @@ def model_fn(features, labels, mode, params):
                 saver=saver,
                 listeners=[saver_listener])
 
+            training_hooks = [restore_hook, saver_hook]
+
+            if params['noise_scale']:
+                logger_hook = tf.train.LoggingTensorHook(
+                    {
+                        'G_noise': tf.identity(tf_G_noise),
+                        'S_noise': tf.identity(tf_S_noise),
+                        'step': global_step,
+                    },
+                    every_n_iter=params["iterations"],
+                    every_n_secs=None
+                )
+                training_hooks.append(logger_hook)
+
             return tpu_estimator.TPUEstimatorSpec(
                 tf.estimator.ModeKeys.TRAIN,
                 loss=tf_loss,
                 host_call=host_call,
                 train_op=train_op,
-                training_hooks=[restore_hook, saver_hook])
+                training_hooks=training_hooks)
 
         elif mode == tf.estimator.ModeKeys.EVAL:
             # Evaluation metrics

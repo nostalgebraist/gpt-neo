@@ -361,8 +361,8 @@ def model_fn(features, labels, mode, params):
             if params['noise_scale']:
                 logger_hook = tf.train.LoggingTensorHook(
                     {
-                        'G_noise': tf.identity(tf_G_noise),
-                        'S_noise': tf.identity(tf_S_noise),
+                        'G_noise': tf_G_noise,
+                        'S_noise': tf_S_noise,
                         'step': global_step,
                     },
                     every_n_iter=params["iterations"],

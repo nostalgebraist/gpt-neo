@@ -18,21 +18,27 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 parser = argparse.ArgumentParser()
 parser.add_argument("--input_dir", type=str, help="Path to where your files are located. Files ending in .zst are "
                                                   "treated as archives, all others as raw text.")
-parser.add_argument("--files_per", type=int, default=100000, help="Text files per tfrecord")
+parser.add_argument("--files_per", type=int, default=100000,
+                    help="Text files per tfrecord")
 parser.add_argument("--name", type=str, default="openwebtext",
                     help="Name of output files will be name_i.tfrecords where i is the number of the file")
-parser.add_argument("--output_dir", type=str, default="./tfrecords", help="Where to put tfrecords")
+parser.add_argument("--output_dir", type=str,
+                    default="./tfrecords", help="Where to put tfrecords")
 parser.add_argument("--encoder_path", type=str,
                     help="Path to encoder files, or leave unspecified to use GPT2 tokenizer")
-parser.add_argument("--minimum_size", type=int, default=100, help="Minimum size a document has to be to be included")
+parser.add_argument("--minimum_size", type=int, default=100,
+                    help="Minimum size a document has to be to be included")
 parser.add_argument("--ftfy", action="store_false", help="normalize with ftfy")
-parser.add_argument("--wikitext-detokenize", action="store_false", help="use wikitext detokenizer")
+parser.add_argument("--wikitext-detokenize",
+                    action="store_false", help="use wikitext detokenizer")
 parser.add_argument("--separator", nargs="+", type=int, default=[50256],
                     help="separator to place between files in chunk mode")
 parser.add_argument("--chunk_size", type=int, default=2048, help="How big a chunk should be in chunk mode. "
                                                                  "Should equal your model's context size")
-parser.add_argument("--write_dataset_config", action="store_true", help="Write the dataset config file on completion")
-parser.add_argument("--processes", type=int, default=0, help="Number of processes to use. Defaults to cpu count.")
+parser.add_argument("--write_dataset_config", action="store_true",
+                    help="Write the dataset config file on completion")
+parser.add_argument("--processes", type=int, default=0,
+                    help="Number of processes to use. Defaults to cpu count.")
 
 args = parser.parse_args()
 if not args.output_dir.endswith("/"):
@@ -115,8 +121,10 @@ def archive_to_tokens(f, encoder, args):
             doc = ftfy.fix_text(doc, normalization='NFKC')
         if args.wikitext_detokenize:
             doc = wikitext_detokenizer(doc)
-        doc = encoder.encode(doc) + args.separator  # read document from lmd and append separator token
-        yield split_list(doc, args.chunk_size)  # split into n_ctx + 1 size chunks
+        # read document from lmd and append separator token
+        doc = encoder.encode(doc) + args.separator
+        # split into n_ctx + 1 size chunks
+        yield split_list(doc, args.chunk_size)
 
 
 def write_files(files, files_per, output_dir, out_name, start_no, write_remainder=False, process_no=None):
@@ -125,7 +133,8 @@ def write_files(files, files_per, output_dir, out_name, start_no, write_remainde
         return
     chunks = split_list(files, files_per)
 
-    if len(chunks[-1]) != files_per and not write_remainder:  # pop the last file if it's length != files per
+    # pop the last file if it's length != files per
+    if len(chunks[-1]) != files_per and not write_remainder:
         remainder = chunks.pop(-1)
     else:
         remainder = None  # assuming files = remainder from an old chunk here
@@ -149,15 +158,18 @@ def get_files(input_dir, filetypes=None):
     if filetypes == None:
         filetypes = ["jsonl.zst", ".txt", ".xz", ".tar.gz"]
     files = [list(Path(input_dir).glob(f"*{ft}")) for ft in filetypes]
-    return [str(item) for sublist in files for item in sublist]  # flatten list of list -> list and stringify Paths
+    # flatten list of list -> list and stringify Paths
+    return [str(item) for sublist in files for item in sublist]
 
 
 def read_checkpoint(checkpoint_path, resume_from_checkpoint=True):
     # init checkpointing
     if resume_from_checkpoint and os.path.isfile(checkpoint_path):
         try:
-            resume_files_processed, tfrecord_count = [int(i) for i in open(checkpoint_path, "r").read().split(", ")]
-            print(f"\nResuming from tfrecord no. {tfrecord_count} / file no. {resume_files_processed}")
+            resume_files_processed, tfrecord_count = [
+                int(i) for i in open(checkpoint_path, "r").read().split(", ")]
+            print(
+                f"\nResuming from tfrecord no. {tfrecord_count} / file no. {resume_files_processed}")
             return resume_files_processed, tfrecord_count
         except:
             pass
@@ -176,7 +188,8 @@ def create_tfrecords(params, write_remainder=True, write_every_n_files=1, save_c
     pbar = tqdm(desc=f"Writing TFRecord Files to {args.output_dir}. Parsed 0 input files. files_written ",
                 disable=not display_pbar)
     checkpoint_path = f"{args.output_dir}/checkpoint.txt"
-    resume_files_processed, tfrecord_count = read_checkpoint(checkpoint_path, resume_from_checkpoint)
+    resume_files_processed, tfrecord_count = read_checkpoint(
+        checkpoint_path, resume_from_checkpoint)
 
     data_to_prepend = []
     tokenized_files_array = []
@@ -207,13 +220,16 @@ def create_tfrecords(params, write_remainder=True, write_every_n_files=1, save_c
                 _tfrecord_count, remainder = write_files(tokenized_files_array, files_per=args.files_per,
                                                          output_dir=args.output_dir, out_name=args.name,
                                                          start_no=tfrecord_count, process_no=process_no)
-                pbar.update(_tfrecord_count - tfrecord_count)  # update progress bar
+                # update progress bar
+                pbar.update(_tfrecord_count - tfrecord_count)
                 pbar.set_description(
                     f"Writing TFRecord Files to {args.output_dir}. Parsed {files_processed} input files. files_written ")
                 tfrecord_count = _tfrecord_count
-                tokenized_files_array = remainder if remainder is not None else []  # add remaining files to next chunk
+                # add remaining files to next chunk
+                tokenized_files_array = remainder if remainder is not None else []
                 with open(checkpoint_path, "w") as checkpoint_file:
-                    checkpoint_file.write(f"{files_processed}, {tfrecord_count}")
+                    checkpoint_file.write(
+                        f"{files_processed}, {tfrecord_count}")
 
     if len(tokenized_files_array) >= args.files_per:  # also write at end
         _tfrecord_count, remainder = write_files(tokenized_files_array, files_per=args.files_per,
@@ -240,7 +256,8 @@ def create_tfrecords(params, write_remainder=True, write_every_n_files=1, save_c
 def create_tfrecords_mp(files, args):
     files = split_list(files, len(files) // args.processes)
     with Pool(processes=args.processes) as pool:
-        pbar = tqdm(pool.imap(create_tfrecords, zip(files, repeat(args), range(len(files)))))
+        pbar = tqdm(pool.imap(create_tfrecords, zip(
+            files, repeat(args), range(len(files)))))
         meta = {"discarded": 0, "processed": 0, "successful": 0}
         for results in pbar:
             pbar.update()
@@ -250,9 +267,11 @@ def create_tfrecords_mp(files, args):
 
 
 if __name__ == "__main__":
-    os.makedirs(args.output_dir, exist_ok=True)  # make output dir if it doesn't exist
+    # make output dir if it doesn't exist
+    os.makedirs(args.output_dir, exist_ok=True)
     files = get_files(args.input_dir)
-    args.chunk_size += 1  # we shift the data by 1 to the right for targets, so increment the chunk size here
+    # we shift the data by 1 to the right for targets, so increment the chunk size here
+    args.chunk_size += 1
 
     if args.processes == 0:
         args.processes = cpu_count()

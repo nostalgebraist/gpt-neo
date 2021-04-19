@@ -24,7 +24,8 @@ def lambada_create_tokens_data(params, path):
         req = requests.get(lambada_src_uri)
         req.raise_for_status()
         jsons = [json.loads(l) for l in req.iter_lines()]
-        texts = [ftfy.fix_text(j['text'], normalization=normalization) for j in jsons]
+        texts = [ftfy.fix_text(j['text'], normalization=normalization)
+                 for j in jsons]
         enc = fetch_encoder(params)
         arrays = [encode(enc, t) for t in texts]
         json.dump(arrays, f)
@@ -66,7 +67,8 @@ def lambada_init(params):
     ]
     assert len(l) > 0, 'lambada_tokens_path not found in the dataset config'
     lt_path = l[0]
-    assert lt_path.endswith('.json'), 'lambada_tokens_path must have extension json'
+    assert lt_path.endswith(
+        '.json'), 'lambada_tokens_path must have extension json'
 
     tokens_data = lambada_read_or_create_tokens_data(params, lt_path)
     bins_array = bin_pack(params, tokens_data)
@@ -93,8 +95,10 @@ def lambada_input(params):
         bin = tf.cast(bin, dtype=tf.int32)
         indexes = tf.range(n_ctx)
         results = tf.gather(bin, (indexes + 1) % n_ctx)
-        eos_next_positions = tf.math.equal(tf.gather(bin, (indexes + 2) % n_ctx), eos_token)
-        output = tf.where(eos_next_positions, results, tf.constant(eos_token, shape=[n_ctx]))
+        eos_next_positions = tf.math.equal(
+            tf.gather(bin, (indexes + 2) % n_ctx), eos_token)
+        output = tf.where(eos_next_positions, results,
+                          tf.constant(eos_token, shape=[n_ctx]))
         bin = tf.reshape(bin, [n_ctx])
         bin = tf.cast(bin, dtype=tf.int32)
         output = tf.reshape(output, [n_ctx])

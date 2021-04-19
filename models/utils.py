@@ -9,10 +9,12 @@ def entmax_backward(explicit_inputs, all_inputs, forward_operations, outputs, ou
     y, = outputs
     dY, = output_grads
 
-    gppr = mtf.where(mtf.greater(y, 0), mtf.pow(y, (2 - alpha)), mtf.zeros_like(y))
+    gppr = mtf.where(mtf.greater(y, 0), mtf.pow(
+        y, (2 - alpha)), mtf.zeros_like(y))
     dX = dY * gppr
 
-    q = mtf.reduce_sum(dX, reduced_dim=dim) / mtf.reduce_sum(gppr, reduced_dim=dim)
+    q = mtf.reduce_sum(dX, reduced_dim=dim) / \
+        mtf.reduce_sum(gppr, reduced_dim=dim)
     dX = dX - q * gppr
 
     return dX,
@@ -21,9 +23,11 @@ def entmax_backward(explicit_inputs, all_inputs, forward_operations, outputs, ou
 def entmax_forward(x, alpha=1.3, dim=None, n_iter=50):
     assert alpha > 1 and alpha < 2, 'alpha must be between 1 and 2'
 
-    _gp = lambda x, alpha: x ** (alpha - 1)
-    _gp_inv = lambda x, alpha: mtf.pow(x, (1 / (alpha - 1)))
-    _p = lambda x, alpha: _gp_inv(mtf.relu(x), alpha)
+    def _gp(x, alpha): return x ** (alpha - 1)
+
+    def _gp_inv(x, alpha): return mtf.pow(x, (1 / (alpha - 1)))
+
+    def _p(x, alpha): return _gp_inv(mtf.relu(x), alpha)
 
     dim = x.shape[-1] if dim is None else dim
     d = dim.size
@@ -91,7 +95,8 @@ def sample_categorical(x, dim=None):
     dim = x.shape[-1] if dim is None else dim
 
     cdf = mtf.cumsum(x, dim)
-    rand_uniform = mtf.random_uniform(x.mesh, x.shape - dim, minval=0, maxval=1)
+    rand_uniform = mtf.random_uniform(
+        x.mesh, x.shape - dim, minval=0, maxval=1)
     mask = mtf.cast(mtf.greater(cdf, rand_uniform), tf.int32)
     return mtf.argmax(mask, dim)
 

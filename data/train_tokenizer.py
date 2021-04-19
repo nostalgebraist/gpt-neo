@@ -16,9 +16,12 @@ from tqdm import tqdm
 parser = argparse.ArgumentParser()
 parser.add_argument("--base_dir", type=str, help="Path to where your files are located. Files ending in .zst are treated as \
                     archives, all others as raw text.")
-parser.add_argument("--output_dir", type=str, default="tokenizers", help="Where to put the tokenizer")
-parser.add_argument("--file_type", type=str, choices=["xz", "txt"], default="xz", help="Extension of file to parse")
-parser.add_argument("--vocab_size", type=int, help="Size of vocabulary", required = True)
+parser.add_argument("--output_dir", type=str,
+                    default="tokenizers", help="Where to put the tokenizer")
+parser.add_argument("--file_type", type=str,
+                    choices=["xz", "txt"], default="xz", help="Extension of file to parse")
+parser.add_argument("--vocab_size", type=int,
+                    help="Size of vocabulary", required=True)
 args = parser.parse_args()
 
 # main script
@@ -63,7 +66,8 @@ tokenizer.post_processor = processors.ByteLevel(trim_offsets=True)
 tokenizer.normalizer = NFKC()
 
 # And then train
-trainer = trainers.BpeTrainer(vocab_size=args.vocab_size, min_frequency=2, special_tokens=["<|endoftext|>", "<|padding|>"])
+trainer = trainers.BpeTrainer(vocab_size=args.vocab_size, min_frequency=2, special_tokens=[
+                              "<|endoftext|>", "<|padding|>"])
 tokenizer.train(trainer, data_files)
 
 # And Save it

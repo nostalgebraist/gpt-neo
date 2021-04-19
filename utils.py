@@ -11,6 +11,7 @@ import mesh_tensorflow as mtf
 from data.encoders import fetch_encoder
 import re
 
+
 def setup_logging(args):
     Path("logs").mkdir(exist_ok=True)
     tf.logging.set_verbosity(logging.INFO)
@@ -55,7 +56,8 @@ def simd_mesh_setup(params, mesh_shape, layout_rules):
     # Worker 0 caches all the TPU binaries
     worker0_mem = replica_cache_size * params["context"].num_replicas
     devices_memory_usage = [worker0_mem] + [0] * (num_hosts - 1)
-    var_placer = mtf.utils.BalancedVariablePlacer(device_list, devices_memory_usage)
+    var_placer = mtf.utils.BalancedVariablePlacer(
+        device_list, devices_memory_usage)
     mesh_devices = [""] * mesh_shape.size
     mesh_impl = mtf.simd_mesh_impl.SimdMeshImpl(
         mesh_shape, layout_rules, mesh_devices, params["context"].device_assignment)
@@ -115,7 +117,7 @@ def save_config(params_dict, logdir):
         if count == total_params - 1:
             text += f'"{str(key)}"' + ' : ' + config_value + '\n\n'
         else:
-            text += f'"{str(key)}"'  + ' : ' + config_value + ',\n\n'
+            text += f'"{str(key)}"' + ' : ' + config_value + ',\n\n'
     text += '\n\n}'
     sess = tf.InteractiveSession()
     summary_op = tf.summary.text("run_config", tf.convert_to_tensor(text))
@@ -145,11 +147,11 @@ def get_n_trainable_vars(graph):
     """
     total_parameters = 0
     for variable in graph.trainable_variables:
-      shape = variable.shape.dims
-      variable_parameters = 1
-      for dim in shape:
-          variable_parameters *= dim.size
-      total_parameters += variable_parameters
+        shape = variable.shape.dims
+        variable_parameters = 1
+        for dim in shape:
+            variable_parameters *= dim.size
+        total_parameters += variable_parameters
     print(f"\n\nN TRAINABLE VARS:\n{total_parameters:,}\n\n")
 
 
@@ -165,7 +167,8 @@ def print_dim_names(graph):
         all_dim_names.append(names)
 
     # Print all dim names in graph & write to file
-    all_dim_names = [item for sublist in all_dim_names for item in sublist] # Flatten all dims
+    # Flatten all dims
+    all_dim_names = [item for sublist in all_dim_names for item in sublist]
     unique_dims = list(set(all_dim_names))
     print("ALL DIM NAMES:")
     for dim_name in unique_dims:
@@ -202,6 +205,7 @@ def loss_denominator(targets, num_microbatches):
     ret = float(targets.shape.size) * num_microbatches
     return float(ret)
 
+
 def check_dataset(input_fn, params, global_step=None):
     tf.enable_eager_execution()
     if global_step is not None:
@@ -220,17 +224,21 @@ def check_dataset(input_fn, params, global_step=None):
     print('-' * 50)
     exit()
 
+
 def auto_layout(graph, mesh_shape, logits, loss):
     layout_rules = mtf.auto_mtf.layout(graph, mesh_shape, [logits, loss])
-    print(f"Auto-selected layout:\n{layout_rules}\nRe-initialize graph with selected layout")
+    print(
+        f"Auto-selected layout:\n{layout_rules}\nRe-initialize graph with selected layout")
     quit()
+
 
 def auto_layout_and_mesh_shape(graph, num_cores, logits, loss):
     layout_rules, mesh_shape = mtf.auto_mtf.layout_and_mesh_shape(graph, num_cores,
-                                                                    [logits, loss], max_mesh_shape_dimensions=4)
-    print(f"Num cores:\n{num_cores}\nAuto-selected layout:\n{layout_rules}\nAuto-selected mesh shape:\n{mesh_shape}" \
-            f"\nRe-initialize graph with selected layout & mesh shape")
+                                                                  [logits, loss], max_mesh_shape_dimensions=4)
+    print(f"Num cores:\n{num_cores}\nAuto-selected layout:\n{layout_rules}\nAuto-selected mesh shape:\n{mesh_shape}"
+          f"\nRe-initialize graph with selected layout & mesh shape")
     quit()
+
 
 def create_host_call(model_dir):
     """Construct a host_call writing scalar summaries.
@@ -278,7 +286,8 @@ def create_host_call(model_dir):
             assert len(args) == len(summaries)
             for i, tensor in enumerate(args):
                 name = summaries[i][0]
-                tf2.summary.scalar(name, tf.reduce_mean(tensor), step=global_step)
+                tf2.summary.scalar(name, tf.reduce_mean(
+                    tensor), step=global_step)
         return tf.summary.all_v2_summary_ops()
 
     global_step_t = tf.reshape(tf.to_int32(tf.train.get_global_step()), [1])
@@ -286,105 +295,110 @@ def create_host_call(model_dir):
 
 
 def natural_sort(l):
-    convert = lambda text: int(text) if text.isdigit() else text.lower()
-    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ]
-    return sorted(l, key = alphanum_key)
+    def convert(text): return int(text) if text.isdigit() else text.lower()
+
+    def alphanum_key(key): return [convert(c)
+                                   for c in re.split('([0-9]+)', key)]
+    return sorted(l, key=alphanum_key)
 
 
 def serialize_training_step(features, model_fn, batch_dim, num_splits, grad_fn=None):
-  """Break the training batch into multiple microbatches.
-  Returns two structures:
-  grads - a list of Tensors corresponding to the gradients on
-     graph.trainable_variables.  These are summed across all microbatches
-  outputs - a dictionary of Tensors corresponding to the output dictionary of
-     model_fn.   Each value is either summed across all microbatches (if it
-     has no batch-dimension), or concatenated across all microbatches to
-     represent the original batch (if it does have a batch-dimension).
-  Args:
-    features: a dictionary of Tensors, each with a batch_dim dimension
-    model_fn: a function from feature dictionary to output dictionary
-      output_dictionary must contain "loss"
-    batch_dim: a Dimension
-    num_splits: an integer dividing batch_dim.size
-  Returns:
-    grads: a list of Tensors corresponding to the gradients on
-      graph.trainable_variables
-    outputs: dictionary of output Tensors summed across microbatches
-  """
-  for v in features.values():
-    mesh = v.mesh
-    graph = v.graph
-  microbatch_dim = Dimension("microbatch", num_splits)
-  smaller_batch_dim = Dimension(batch_dim.name, batch_dim.size // num_splits)
-  cache = {}
-  def select(t, microbatch_num):
-    return gather(
-        replace_dimensions(t, batch_dim, [smaller_batch_dim, microbatch_dim]),
-        microbatch_num, microbatch_dim)
-  def cond_fn(microbatch_num):
-    return less(microbatch_num, num_splits)
-  def body_fn(microbatch_num):
-    """Body function for mtf.while_loop.
+    """Break the training batch into multiple microbatches.
+    Returns two structures:
+    grads - a list of Tensors corresponding to the gradients on
+       graph.trainable_variables.  These are summed across all microbatches
+    outputs - a dictionary of Tensors corresponding to the output dictionary of
+       model_fn.   Each value is either summed across all microbatches (if it
+       has no batch-dimension), or concatenated across all microbatches to
+       represent the original batch (if it does have a batch-dimension).
     Args:
-      microbatch_num: a mtf Scalar
+      features: a dictionary of Tensors, each with a batch_dim dimension
+      model_fn: a function from feature dictionary to output dictionary
+        output_dictionary must contain "loss"
+      batch_dim: a Dimension
+      num_splits: an integer dividing batch_dim.size
     Returns:
-      a list of mtf Tensors
+      grads: a list of Tensors corresponding to the gradients on
+        graph.trainable_variables
+      outputs: dictionary of output Tensors summed across microbatches
     """
-    my_features = {}
-    for k, v in six.iteritems(features):
-      my_features[k] = select(v, microbatch_num)
+    for v in features.values():
+        mesh = v.mesh
+        graph = v.graph
+    microbatch_dim = Dimension("microbatch", num_splits)
+    smaller_batch_dim = Dimension(batch_dim.name, batch_dim.size // num_splits)
+    cache = {}
 
-    outputs = model_fn(my_features)
+    def select(t, microbatch_num):
+        return gather(
+            replace_dimensions(
+                t, batch_dim, [smaller_batch_dim, microbatch_dim]),
+            microbatch_num, microbatch_dim)
 
-    grads = gradients(
-        [outputs["loss"]], [v.outputs[0] for v in graph.trainable_variables])
-    if None in grads:
-      for var, var_grad in zip(graph.trainable_variables, grads):
-        if var_grad is None:
-          tf.logging.error(
-              "None gradient for trainable variable %s." % var.outputs[0])
-      raise ValueError("Fond trainable variable(s) with None gradient. "
-                       "Check if there are trainable variables(s) "
-                       "disconnected from the graph.")
-    outputs_grad_fn = {}
-    if grad_fn is not None:
-        outputs_grad_fn = grad_fn(grads)
+    def cond_fn(microbatch_num):
+        return less(microbatch_num, num_splits)
 
-    output_keys = sorted(outputs.keys())
-    # TODO: add outputs_grad_fn keys, ensure sort order
-    cache["output_keys"] = output_keys
+    def body_fn(microbatch_num):
+        """Body function for mtf.while_loop.
+        Args:
+          microbatch_num: a mtf Scalar
+        Returns:
+          a list of mtf Tensors
+        """
+        my_features = {}
+        for k, v in six.iteritems(features):
+            my_features[k] = select(v, microbatch_num)
 
+        outputs = model_fn(my_features)
 
-    ret = []
-    ret.append(microbatch_num + 1)
-    # The rest of the returned values are "accumulators" that get summed
-    # across all microbatches.
-    for t in outputs.values():
-      if smaller_batch_dim in t.shape:
-        # The output contains a batch dimension, so we want to concatenate
-        # across microbatches.
-        # Here we pad the tensor for each microbatch - summing will complete
-        #  the concatenation.
-        t = einsum(
-            [t, one_hot(microbatch_num, microbatch_dim, dtype=t.dtype)],
-            output_shape=replace_dimensions(
-                t.shape, smaller_batch_dim,
-                [smaller_batch_dim, microbatch_dim]))
-        t = replace_dimensions(
-            t, [smaller_batch_dim, microbatch_dim], batch_dim)
-        ret.append(t)
-      else:
-        # There is no batch dimension.  Sum across all microbatches.
-        ret.append(t)
-    # we also want to sum the gradients.
-    ret.extend(grads)
-    return ret
-  while_out = while_loop(
-      cond_fn, body_fn, [constant(mesh, 0, dtype=tf.int32)],
-      has_accumulators=True)
-  num_outputs = len(cache["output_keys"])
-  combined_outputs = {}
-  for k, v in zip(cache["output_keys"], while_out[1:1 + num_outputs]):
-    combined_outputs[k] = v
-  combined_grads = while_out[1 + num_outputs:]
-  return combined_grads, combined_outputs
+        grads = gradients(
+            [outputs["loss"]], [v.outputs[0] for v in graph.trainable_variables])
+        if None in grads:
+            for var, var_grad in zip(graph.trainable_variables, grads):
+                if var_grad is None:
+                    tf.logging.error(
+                        "None gradient for trainable variable %s." % var.outputs[0])
+            raise ValueError("Fond trainable variable(s) with None gradient. "
+                             "Check if there are trainable variables(s) "
+                             "disconnected from the graph.")
+        outputs_grad_fn = {}
+        if grad_fn is not None:
+            outputs_grad_fn = grad_fn(grads)
+
+        output_keys = sorted(outputs.keys())
+        # TODO: add outputs_grad_fn keys, ensure sort order
+        cache["output_keys"] = output_keys
+
+        ret = []
+        ret.append(microbatch_num + 1)
+        # The rest of the returned values are "accumulators" that get summed
+        # across all microbatches.
+        for t in outputs.values():
+            if smaller_batch_dim in t.shape:
+                # The output contains a batch dimension, so we want to concatenate
+                # across microbatches.
+                # Here we pad the tensor for each microbatch - summing will complete
+                #  the concatenation.
+                t = einsum(
+                    [t, one_hot(microbatch_num, microbatch_dim, dtype=t.dtype)],
+                    output_shape=replace_dimensions(
+                        t.shape, smaller_batch_dim,
+                        [smaller_batch_dim, microbatch_dim]))
+                t = replace_dimensions(
+                    t, [smaller_batch_dim, microbatch_dim], batch_dim)
+                ret.append(t)
+            else:
+                # There is no batch dimension.  Sum across all microbatches.
+                ret.append(t)
+        # we also want to sum the gradients.
+        ret.extend(grads)
+        return ret
+    while_out = while_loop(
+        cond_fn, body_fn, [constant(mesh, 0, dtype=tf.int32)],
+        has_accumulators=True)
+    num_outputs = len(cache["output_keys"])
+    combined_outputs = {}
+    for k, v in zip(cache["output_keys"], while_out[1:1 + num_outputs]):
+        combined_outputs[k] = v
+    combined_grads = while_out[1 + num_outputs:]
+    return combined_grads, combined_outputs

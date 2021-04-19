@@ -1,12 +1,14 @@
 from tokenizers import Tokenizer
 from transformers import GPT2Tokenizer, GPT2TokenizerFast
 
+
 def fetch_encoder(params):
     no_dataset = params.get('no_dataset', False)
     if no_dataset:
         return None
 
-    dataset = next(iter(params['dataset_configs'].values())) # Get the first value from the dict
+    # Get the first value from the dict
+    dataset = next(iter(params['dataset_configs'].values()))
     path = dataset["tokenizer_path"]
     is_pretrained = dataset.get("tokenizer_is_pretrained", False)
 

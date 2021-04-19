@@ -98,7 +98,8 @@ def sequential_input(params, global_step=None, eval=False):
     batch_size = params['eval_batch_size' if eval else 'train_batch_size']
 
     filenames = []
-    for dataset_config in params['dataset_configs'].values():  # iterate through each dataset and read params
+    # iterate through each dataset and read params
+    for dataset_config in params['dataset_configs'].values():
         path_key = 'path' if not eval else 'eval_path'
         path = dataset_config[path_key]
         filenames.extend(
@@ -111,7 +112,8 @@ def sequential_input(params, global_step=None, eval=False):
         random.seed(seed)
         random.shuffle(filenames)
 
-    dataset = tf.data.Dataset.from_tensor_slices(filenames).repeat()  # repeat filenames to infinity
+    dataset = tf.data.Dataset.from_tensor_slices(
+        filenames).repeat()  # repeat filenames to infinity
 
     if not eval:
         # skip forward first in the filenames list, then skip the remaining amount in the parsed tfrecords files
@@ -129,10 +131,12 @@ def sequential_input(params, global_step=None, eval=False):
 
     # parse the tokenized data from the tfrecord files and shuffle
     dataset = dataset.map(_parse_function, num_parallel_calls=1)
-    dataset = dataset.map(partial(autoregressive_sample_text, params), num_parallel_calls=1)
+    dataset = dataset.map(
+        partial(autoregressive_sample_text, params), num_parallel_calls=1)
 
     # batch data and repeat to infinity
-    dataset = dataset.batch(batch_size, drop_remainder=True).prefetch(params["iterations"] * 2)
+    dataset = dataset.batch(batch_size, drop_remainder=True).prefetch(
+        params["iterations"] * 2)
     return dataset.repeat()
 
 
@@ -142,14 +146,17 @@ def pred_input(params, logger, enc=None,
                "previously unexplored valley, in the Andes Mountains. Even more surprising to the " \
                "researchers was the fact that the unicorns spoke perfect English."
 
-    text = unicorns if path_to_prompt == "" else open(path_to_prompt, "r").read()
+    text = unicorns if path_to_prompt == "" else open(
+        path_to_prompt, "r").read()
     tokens = encode(enc, text)
 
     if len(tokens) > params["n_ctx"]:
-        logger.info("The length of your input prompt is longer than the model's context length - truncating input.")
+        logger.info(
+            "The length of your input prompt is longer than the model's context length - truncating input.")
         tokens = tokens[len(tokens) - params["n_ctx"]:]
     if len(tokens) < params["n_ctx"]:
-        tokens = tf.pad(tokens, [[0, params["n_ctx"] - len(tokens)]], constant_values=params["padding_id"])
+        tokens = tf.pad(tokens, [
+                        [0, params["n_ctx"] - len(tokens)]], constant_values=params["padding_id"])
     t = tf.broadcast_to(tokens, [params["batch_size"], params["n_ctx"]])
     dataset = tf.data.Dataset.from_tensors(t)
 
@@ -186,7 +193,8 @@ def handle_pred_output(predictions, logger, enc, params, out_name="test"):
 ### DEPRECATED ###
 
 def generic_text(params, eval=False, sample_text_fn=None, **kwargs):
-    logging.warning("DEPRECATION WARNING: generic_text will be phased out in future versions.")
+    logging.warning(
+        "DEPRECATION WARNING: generic_text will be phased out in future versions.")
     i = 0 if not eval else 1
 
     weights = []
@@ -216,8 +224,10 @@ def generic_text(params, eval=False, sample_text_fn=None, **kwargs):
     batch_size = params['eval_batch_size' if eval else 'train_batch_size']
 
     seed = params.get('seed', None)
-    dataset = tf.data.experimental.sample_from_datasets(datasets, weights=weights, seed=seed)
-    dataset = dataset.batch(batch_size, drop_remainder=True).prefetch(params["iterations"] * 2)
+    dataset = tf.data.experimental.sample_from_datasets(
+        datasets, weights=weights, seed=seed)
+    dataset = dataset.batch(batch_size, drop_remainder=True).prefetch(
+        params["iterations"] * 2)
     return dataset
 
 
@@ -267,7 +277,8 @@ def text_dataset(files, params, stitch, datatype, batch=True, sample_text_fn=Non
             eos_id = params['eos_id']
 
             for i in range(1, stitch):
-                out = tf.concat([out, [eos_id], _get_x(i)], axis=0)  # text1<|endoftext|>text2
+                # text1<|endoftext|>text2
+                out = tf.concat([out, [eos_id], _get_x(i)], axis=0)
 
             return out
 
@@ -279,15 +290,18 @@ def text_dataset(files, params, stitch, datatype, batch=True, sample_text_fn=Non
         # Sample 1024(+1) tokens from the stitched together text
         is_random_documents = datatype == "documents_random"
         if sample_text_fn is not None:
-            _sample_text = partial(sample_text_fn, random_documents=is_random_documents)
+            _sample_text = partial(
+                sample_text_fn, random_documents=is_random_documents)
         else:
             _sample_text = autoregressive_sample_text_random_documents if is_random_documents else autoregressive_sample_text
             _sample_text = partial(_sample_text, params)
 
-        dataset = dataset.map(_sample_text, num_parallel_calls=num_parallel_calls)
+        dataset = dataset.map(
+            _sample_text, num_parallel_calls=num_parallel_calls)
 
     if batch:
-        dataset = dataset.batch(params["train_batch_size"], drop_remainder=True).prefetch(params["iterations"] * 2)
+        dataset = dataset.batch(params["train_batch_size"], drop_remainder=True).prefetch(
+            params["iterations"] * 2)
 
     dataset = dataset.repeat()
 
@@ -297,12 +311,14 @@ def text_dataset(files, params, stitch, datatype, batch=True, sample_text_fn=Non
 def autoregressive_sample_text_random_documents(params, x):
     seed = params.get('seed', None)
     s = tf.size(x)
-    r = tf.random.uniform([], maxval=s - (params["n_ctx"] + 1), dtype=tf.dtypes.int32, seed=seed)
+    r = tf.random.uniform([], maxval=s - (params["n_ctx"] + 1),
+                          dtype=tf.dtypes.int32, seed=seed)
     r1 = tf.range(r, r + params["n_ctx"])
     r2 = tf.range(r + 1, (r + 1) + params["n_ctx"])
-    r1 = tf.reshape(r1, [params["n_ctx"]])  # Somehow, this makes the compiler happy
+    # Somehow, this makes the compiler happy
+    r1 = tf.reshape(r1, [params["n_ctx"]])
     r2 = tf.reshape(r2, [params[
-                             "n_ctx"]])  # TPUs want constant sized input, and these reshapes makes it recognize the shape of the input
+        "n_ctx"]])  # TPUs want constant sized input, and these reshapes makes it recognize the shape of the input
     vals1 = tf.gather(x, r1)
     vals2 = tf.gather(x, r2)
 
@@ -333,7 +349,8 @@ def mlm_sample_text(params, x, random_documents=False):
 
     if random_documents:
         s = tf.size(x)
-        r = tf.random.uniform([], maxval=(s - seq_len), dtype=tf.dtypes.int32, seed=seed)
+        r = tf.random.uniform([], maxval=(s - seq_len),
+                              dtype=tf.dtypes.int32, seed=seed)
         r1 = tf.range(r, r + seq_len)
         r1 = tf.reshape(r1, [seq_len])
         features = tf.gather(x, r1)
@@ -353,7 +370,8 @@ def mlm_sample_text(params, x, random_documents=False):
         can_mask &= tf.not_equal(features, ignore_id)
 
     # generate boolean mask for masking ids
-    mask_mask = tf.less(tf.random.uniform(shape, minval=0., maxval=1., dtype=tf.float32, seed=seed), mask_prob)
+    mask_mask = tf.less(tf.random.uniform(
+        shape, minval=0., maxval=1., dtype=tf.float32, seed=seed), mask_prob)
     mask_mask &= can_mask
 
     # generate mask for actually replacing the tokens, for allowing a small number of tokens to stay the same
@@ -364,14 +382,16 @@ def mlm_sample_text(params, x, random_documents=False):
     if random_token_prob > 0:
         random_token_mask = tf.less(tf.random.uniform(shape, minval=0., maxval=1., dtype=tf.float32, seed=seed),
                                     random_token_prob)
-        random_tokens = tf.random.uniform(shape, minval=1, maxval=num_tokens, dtype=tf.dtypes.int32, seed=seed)
+        random_tokens = tf.random.uniform(
+            shape, minval=1, maxval=num_tokens, dtype=tf.dtypes.int32, seed=seed)
 
         # make sure random tokens do not include illegal token ids specified by `mlm_mask_ignore_ids`
         random_can_mask = tf.not_equal(random_tokens, 0)
         for ignore_id in mask_ignore_ids:
             random_can_mask &= tf.not_equal(random_tokens, ignore_id)
 
-        features = tf.where(random_token_mask & random_can_mask, random_tokens, features)
+        features = tf.where(random_token_mask &
+                            random_can_mask, random_tokens, features)
 
     # mask the tokens
     mask_tokens = tf.ones(shape, dtype=tf.int32) * mask_id
@@ -380,5 +400,6 @@ def mlm_sample_text(params, x, random_documents=False):
     # labels will be set to 0 for all non-masked tokens
     labels = tf.where(mask_mask, tf.zeros(shape, dtype=tf.int32), features)
 
-    masked_features, labels = map(lambda t: tf.reshape(t, [ctx_len]), (masked_features, labels))
+    masked_features, labels = map(lambda t: tf.reshape(
+        t, [ctx_len]), (masked_features, labels))
     return masked_features, labels

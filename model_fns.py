@@ -14,34 +14,39 @@ import math
 
 from tensorflow.python.training.saver import BaseSaverBuilder
 
-class CastFromBFloat16SaverBuilder(BaseSaverBuilder):
-  # Based on tensorflow.python.training.saver.BulkSaverBuilder.bulk_restore
-  def bulk_restore(self, filename_tensor, saveables, preferred_shard,
-                 restore_sequentially):
-      from tensorflow.python.framework import ops
-      from tensorflow.python.ops import io_ops
-      # Ignored: bulk restore is internally sequential.
-      del restore_sequentially
-      restore_specs = []
-      orig_spec_dtypes = []
-      for saveable in saveables:
-        for spec in saveable.specs:
-            _f16 = tf.as_dtype('bfloat16')
-            _f32 = tf.as_dtype('float32')
-            expect_dtype = _f16 if (spec.dtype == _f32 and ('adam' not in spec.name)) else spec.dtype
-            restore_specs.append((spec.name, spec.slice_spec, expect_dtype))
-            orig_spec_dtypes.append(spec.dtype)
 
-      names, slices, dtypes = zip(*restore_specs)
-      # Load all tensors onto CPU 0 for compatibility with existing code.
-      with ops.device("cpu:0"):
-        restored = io_ops.restore_v2(filename_tensor, names, slices, dtypes)
-        casted = []
-        for r, dt, rs, osd in zip(restored, dtypes, restore_specs, orig_spec_dtypes):
-            c = tf.cast(r, osd)
-            tf.logging.info(f"{repr(r)}\n{repr(c)}\n\n{repr(rs)}\n\t{r.dtype}\n\t{c.dtype}\n")
-            casted.append(c)
-        return casted
+class CastFromBFloat16SaverBuilder(BaseSaverBuilder):
+    # Based on tensorflow.python.training.saver.BulkSaverBuilder.bulk_restore
+    def bulk_restore(self, filename_tensor, saveables, preferred_shard,
+                     restore_sequentially):
+        from tensorflow.python.framework import ops
+        from tensorflow.python.ops import io_ops
+        # Ignored: bulk restore is internally sequential.
+        del restore_sequentially
+        restore_specs = []
+        orig_spec_dtypes = []
+        for saveable in saveables:
+            for spec in saveable.specs:
+                _f16 = tf.as_dtype('bfloat16')
+                _f32 = tf.as_dtype('float32')
+                expect_dtype = _f16 if (spec.dtype == _f32 and (
+                    'adam' not in spec.name)) else spec.dtype
+                restore_specs.append(
+                    (spec.name, spec.slice_spec, expect_dtype))
+                orig_spec_dtypes.append(spec.dtype)
+
+        names, slices, dtypes = zip(*restore_specs)
+        # Load all tensors onto CPU 0 for compatibility with existing code.
+        with ops.device("cpu:0"):
+            restored = io_ops.restore_v2(
+                filename_tensor, names, slices, dtypes)
+            casted = []
+            for r, dt, rs, osd in zip(restored, dtypes, restore_specs, orig_spec_dtypes):
+                c = tf.cast(r, osd)
+                tf.logging.info(
+                    f"{repr(r)}\n{repr(c)}\n\n{repr(rs)}\n\t{r.dtype}\n\t{c.dtype}\n")
+                casted.append(c)
+            return casted
 
 
 def model_fn(features, labels, mode, params):
@@ -55,7 +60,8 @@ def model_fn(features, labels, mode, params):
 
     # Mesh setup
     if params["use_tpu"]:
-        var_placer, mesh_impl = simd_mesh_setup(params, mesh_shape, layout_rules)
+        var_placer, mesh_impl = simd_mesh_setup(
+            params, mesh_shape, layout_rules)
     else:
         var_placer = None
         gpu_ids = params["gpu_ids"]
@@ -80,7 +86,8 @@ def model_fn(features, labels, mode, params):
         variable_dtype = mtf.VariableDType(master_dtype=tf.float32, slice_dtype=tf.float32,
                                            activation_dtype=tf.bfloat16)
     else:
-        variable_dtype = mtf.VariableDType(master_dtype=tf.float32, slice_dtype=tf.float32, activation_dtype=tf.float32)
+        variable_dtype = mtf.VariableDType(
+            master_dtype=tf.float32, slice_dtype=tf.float32, activation_dtype=tf.float32)
 
     # Build mtf mesh object
     mesh = mtf.Mesh(graph, "my_mesh", var_placer)
@@ -88,7 +95,8 @@ def model_fn(features, labels, mode, params):
     # Build mtf_features & seq length dict for getting number of microbatches
     # We need to pack inputs into a dict to pass into serialize_training_step
     features_dict = {"inputs": features, "labels": labels}
-    sequence_length_dict = {"inputs": params["n_ctx"], "labels": params["n_ctx"]}
+    sequence_length_dict = {
+        "inputs": params["n_ctx"], "labels": params["n_ctx"]}
 
     params = add_mode_to_params(params, mode)
     batch_size = get_batch_size(params)
@@ -113,7 +121,8 @@ def model_fn(features, labels, mode, params):
     other_features = {}
     memory_length_dim = mtf.Dimension("memory_length", length_dim.size)
 
-    attn_bias = biasmask_attn_weights(mesh, length_dim, memory_length_dim, variable_dtype) if params["causal"] else None
+    attn_bias = biasmask_attn_weights(
+        mesh, length_dim, memory_length_dim, variable_dtype) if params["causal"] else None
 
     # Add attn_bias into mtf_features
     other_features["attn_bias"] = attn_bias
@@ -140,10 +149,11 @@ def model_fn(features, labels, mode, params):
         export = params.get("export", False)
 
         if not export:
-            stop_at_token = None if params.get('predict_continue_past_eot') else params["eos_id"]
+            stop_at_token = None if params.get(
+                'predict_continue_past_eot') else params["eos_id"]
 
             kwargs = {}
-            temperature =  params.get('predict_temperature')
+            temperature = params.get('predict_temperature')
             top_k = params.get('predict_top_k')
             if temperature:
                 kwargs['temperature'] = temperature
@@ -191,7 +201,8 @@ def model_fn(features, labels, mode, params):
             prediction_hooks=[mtf.MtfRestoreHook(lowering)])
 
     # We're not predicting, so we better be training or evaluating
-    assert (mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL)
+    assert (mode == tf.estimator.ModeKeys.TRAIN or mode ==
+            tf.estimator.ModeKeys.EVAL)
 
     if mode == tf.estimator.ModeKeys.TRAIN:
         # Gets number of microbatches per batch for serialized training
@@ -200,12 +211,12 @@ def model_fn(features, labels, mode, params):
                                                                                 sequence_length=sequence_length_dict,
                                                                                 mesh_shape=mesh_shape,
                                                                                 layout_rules=layout_rules,
-                                                                                tokens_per_microbatch_per_replica=
-                                                                                params["tokens_per_mb_per_replica"]))
+                                                                                tokens_per_microbatch_per_replica=params["tokens_per_mb_per_replica"]))
     else:
         num_microbatches = 1
 
-    params["num_microbatches"] = num_microbatches  # Add num microbatches to params
+    # Add num microbatches to params
+    params["num_microbatches"] = num_microbatches
 
     if num_microbatches > 1:
 
@@ -217,10 +228,12 @@ def model_fn(features, labels, mode, params):
                                                           variable_dtype=variable_dtype)
                 return {"logits": logits, "loss": loss, "loss_batch": loss_batch}
             else:
-                raise Exception(f"'{params['model']}' is not a valid model - please select from [GPT]")
+                raise Exception(
+                    f"'{params['model']}' is not a valid model - please select from [GPT]")
 
         # Serialize the training step - Gradients are accumulated locally and reduced once.
-        var_grads, output_dict = mtf.serialize_training_step(mtf_features, serialized_fn, batch_dim, num_microbatches)
+        var_grads, output_dict = mtf.serialize_training_step(
+            mtf_features, serialized_fn, batch_dim, num_microbatches)
         loss = output_dict["loss"]
         loss_batch = output_dict["loss_batch"]
         logits = output_dict["logits"]
@@ -232,7 +245,8 @@ def model_fn(features, labels, mode, params):
                     logits, loss, loss_batch = gpt2.model(mtf_features, other_features, params, mesh,
                                                           variable_dtype=variable_dtype, context=None)
         else:
-            raise Exception(f"'{params['model']}' is not a valid model - please select from [GPT]")
+            raise Exception(
+                f"'{params['model']}' is not a valid model - please select from [GPT]")
 
     # Auto layout generation
     if params["auto_layout"]:
@@ -249,7 +263,8 @@ def model_fn(features, labels, mode, params):
                                                      inp_var_grads=var_grads)
         else:
             # Otherwise, they are created in the get_optimizer fn, so we leave inp_var_grads blank
-            _, update_ops, var_grads = get_optimizer(mesh, loss, params, variable_dtype=variable_dtype)
+            _, update_ops, var_grads = get_optimizer(
+                mesh, loss, params, variable_dtype=variable_dtype)
         # Log summaries to tensorboard
         mtf.scalar_summary("loss", loss)
         # Log gradients if in params
@@ -282,13 +297,17 @@ def model_fn(features, labels, mode, params):
 
         # Creates train_op
         tf_update_ops = [lowering.lowered_operation(op) for op in update_ops]
-        tf_update_ops.append(tf.assign_add(global_step, 1))  # Need to manually increment global_step
+        # Need to manually increment global_step
+        tf_update_ops.append(tf.assign_add(global_step, 1))
         tf.logging.info(f"tf_update_ops: {tf_update_ops}")
         train_op = tf.group(tf_update_ops)
     else:
-        tf_mean_logits = lowering.export_to_tf_tensor(fully_replicated_mean_logits)
-        tf_max_logits = lowering.export_to_tf_tensor(fully_replicated_max_logits)
-        tf_loss_batch = tf.to_float(lowering.export_to_tf_tensor(fully_replicated_loss_batch))
+        tf_mean_logits = lowering.export_to_tf_tensor(
+            fully_replicated_mean_logits)
+        tf_max_logits = lowering.export_to_tf_tensor(
+            fully_replicated_max_logits)
+        tf_loss_batch = tf.to_float(
+            lowering.export_to_tf_tensor(fully_replicated_loss_batch))
 
     with mtf.utils.outside_all_rewrites():
         # Copy master variables to slices. Must be called first.
@@ -340,10 +359,13 @@ def model_fn(features, labels, mode, params):
 
             def _lambada_metric_fn(labels, tf_max_logits, tf_loss_batch):
                 eos_token = params["eos_id"]
-                answer_positions = tf.where(tf.math.not_equal(labels, eos_token))
+                answer_positions = tf.where(
+                    tf.math.not_equal(labels, eos_token))
 
-                correct_answers = tf.gather_nd(tf.math.equal(tf_max_logits, labels), answer_positions)
-                accuracy = tf.metrics.mean(tf.cast(correct_answers, tf.float32))
+                correct_answers = tf.gather_nd(tf.math.equal(
+                    tf_max_logits, labels), answer_positions)
+                accuracy = tf.metrics.mean(
+                    tf.cast(correct_answers, tf.float32))
 
                 # I guess tf_loss_batch has z_loss and maybe other stuff added to it
                 # so maybe this should be calculated separately in the future
@@ -354,7 +376,8 @@ def model_fn(features, labels, mode, params):
 
             eval_task = params["eval_task"]
             if eval_task == "lambada":
-                eval_metrics = (_lambada_metric_fn, [labels, tf_max_logits, tf_loss_batch])
+                eval_metrics = (_lambada_metric_fn, [
+                                labels, tf_max_logits, tf_loss_batch])
             else:
                 eval_metrics = (_metric_fn, [tf_mean_logits, tf_loss_batch])
 

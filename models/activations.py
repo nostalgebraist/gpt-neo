@@ -57,7 +57,7 @@ CUSTOM_FNS = {'lrelu001': lambda x: mtf.leaky_relu(x, alpha=0.01),
               'elish': _elish,
               'arcsinh': _arcsinh,
               'aria': lambda x: x * (_var(x, 0) + _var(x, 1) / (
-                          _pos_var(x, 0) + _var(x, 1) * mtf.exp(_var(x, -1) * x) ** (1 / _pos_var(x, 1)))),
+                  _pos_var(x, 0) + _var(x, 1) * mtf.exp(_var(x, -1) * x) ** (1 / _pos_var(x, 1)))),
               'prelu': lambda x: mtf.leaky_relu(x, alpha=_var(x, 0.2)),
               'parcsinh': lambda x: _var(x, 1) * _arcsinh(x * _pos_var(x, 1)),
               'psoftplus': lambda x: _var(x, 1) * mtf.softplus(x * _var(x, 1)) + _var(x, 0),

@@ -5,6 +5,7 @@ import mesh_tensorflow.transformer as mtf_transformer
 from models.utils import entmax, sample_categorical
 from models.gpt2 import gpt2
 
+
 def sample_autoregressive(partial_sequences,
                           other_features,
                           params,
@@ -21,7 +22,7 @@ def sample_autoregressive(partial_sequences,
                           never_end=False,
                           remove_partial_sequences=False,
                           sampling_keep_top_k=-1,
-                          sampling_use_entmax = False,
+                          sampling_use_entmax=False,
                           bos_id=50256,
                           ):
     """Sample randomly one token at a time.
@@ -66,7 +67,6 @@ def sample_autoregressive(partial_sequences,
     padding_id = params.get("padding_id", 0)
     slow_sampling = params.get("slow_sampling", False)
 
-
     initial_position = mtf.reduce_sum(
         mtf.to_int32(mtf.not_equal(inputs, padding_id)), reduced_dim=length_dim)  # Gets position where zero padding starts
 
@@ -107,10 +107,12 @@ def sample_autoregressive(partial_sequences,
             encoder_inputs=encoder_inputs)
 
         with tf.variable_scope("gpt2"):
-            logits, _, _ = gpt2.model({"inputs": inputs}, other_features, params, inputs.mesh, variable_dtype=variable_dtype, context=context_first_part)
+            logits, _, _ = gpt2.model({"inputs": inputs}, other_features, params,
+                                      inputs.mesh, variable_dtype=variable_dtype, context=context_first_part)
 
         if not has_partial_sequences:
-            initial_states = [mtf.zeros_like(t) for t in context_first_part.new_states]
+            initial_states = [mtf.zeros_like(t)
+                              for t in context_first_part.new_states]
         else:
             initial_states = context_first_part.new_states
     else:
@@ -136,7 +138,8 @@ def sample_autoregressive(partial_sequences,
             eos_count = mtf.reduce_sum(
                 mtf.to_int32(mtf.equal(ids, stop_at_token)),
                 reduced_dim=length_dim)
-            has_additional_eos = mtf.greater(eos_count, partial_sequences_eos_count)
+            has_additional_eos = mtf.greater(
+                eos_count, partial_sequences_eos_count)
             is_done = mtf.logical_or(is_done, has_additional_eos)
         all_done = mtf.reduce_all(is_done)
         return mtf.logical_not(all_done)
@@ -168,7 +171,8 @@ def sample_autoregressive(partial_sequences,
             encoder_inputs=encoder_inputs) if not slow_sampling else None
 
         with tf.variable_scope("gpt2", reuse=tf.AUTO_REUSE):
-            logits, _, _ = gpt2.model({"inputs": ids}, other_features, params, inputs.mesh, variable_dtype=variable_dtype, context = context)
+            logits, _, _ = gpt2.model({"inputs": ids}, other_features, params,
+                                      inputs.mesh, variable_dtype=variable_dtype, context=context)
 
         if not sampling_use_entmax:
             # By default, do top_k sampling of 0.9
@@ -177,7 +181,8 @@ def sample_autoregressive(partial_sequences,
 
             if sampling_keep_top_k != -1:
                 if sampling_keep_top_k <= 0:
-                    raise ValueError("sampling_keep_top_k must either be -1 or positive.")
+                    raise ValueError(
+                        "sampling_keep_top_k must either be -1 or positive.")
                 k_largest = mtf.nth_largest_element(
                     logits, n=sampling_keep_top_k,
                     reduced_dim=other_features["vocab_dim"])
@@ -190,7 +195,8 @@ def sample_autoregressive(partial_sequences,
             ids_this_step = sample_categorical(entmax(logits))
 
         if slow_sampling:
-            ids_this_step = mtf.shift(ids_this_step, offset=1, dim=length_dim, wrap=False)
+            ids_this_step = mtf.shift(
+                ids_this_step, offset=1, dim=length_dim, wrap=False)
         else:
             ids_this_step = mtf.reshape(ids_this_step, (batch_dims))
 

@@ -12,7 +12,8 @@ from models.layers import *
 def block(params, scope, layer_num, bias, sequence_dim, memory_length_dim, variable_dtype, context=None):
     use_mlp_glu = params["mlp_glu"] == True
     use_scale_norm = params["scalenorm"] == True
-    use_moe = exists(params["moe_layers"]) and (layer_num in params["moe_layers"])
+    use_moe = exists(params["moe_layers"]) and (
+        layer_num in params["moe_layers"])
     use_rezero = params["rezero"] == True
     macaron_attention = params["macaron"] == True
 
@@ -36,15 +37,18 @@ def block(params, scope, layer_num, bias, sequence_dim, memory_length_dim, varia
                 mlp_fn = mlp_glu if use_mlp_glu else mlp
                 intermediate_size = nx.size * 4 * (1 if not use_mlp_glu else 2)
                 # Define intermediate layer of mlp - to split
-                dim_intermediate_expanded = mtf.Dimension("intermediate_expanded", intermediate_size)
-                m = mlp_fn(x, "mlp_macaron", dim_intermediate_expanded, variable_dtype=variable_dtype, params=params)
+                dim_intermediate_expanded = mtf.Dimension(
+                    "intermediate_expanded", intermediate_size)
+                m = mlp_fn(x, "mlp_macaron", dim_intermediate_expanded,
+                           variable_dtype=variable_dtype, params=params)
 
                 x = x + (m * mult)
             else:
                 mult = 1
 
             if attention_type != "none":
-                res_x = prenorm(x, "norm_1", variable_dtype=variable_dtype, params=params)
+                res_x = prenorm(
+                    x, "norm_1", variable_dtype=variable_dtype, params=params)
                 a = attn(res_x, "attn", nx, attention_type=attention_type,
                          params=params, bias=bias, dim_seq=sequence_dim, memory_length_dim=memory_length_dim,
                          variable_dtype=variable_dtype, context=context)
@@ -53,7 +57,8 @@ def block(params, scope, layer_num, bias, sequence_dim, memory_length_dim, varia
 
             x = x + pre_residual_fn(a, "norm_rezero_1", dtype=variable_dtype)
 
-            res_x = prenorm(x, "norm_2", variable_dtype=variable_dtype, params=params)
+            res_x = prenorm(
+                x, "norm_2", variable_dtype=variable_dtype, params=params)
 
             if use_moe:
                 moe_params = mtf.transformer.moe.HParams()
@@ -75,19 +80,24 @@ def block(params, scope, layer_num, bias, sequence_dim, memory_length_dim, varia
                                                                                                  "relu"),
                                                                            variable_dtype=variable_dtype,
                                                                            num_microbatches=params["num_microbatches"])
-                m = mtf.dropout(m, rate=params["res_dropout"], name="moe_dropout")
+                m = mtf.dropout(
+                    m, rate=params["res_dropout"], name="moe_dropout")
             else:
 
                 mlp_fn = mlp_glu if use_mlp_glu else mlp
                 intermediate_size = nx.size * 4 * (1 if not use_mlp_glu else 2)
 
                 # Define intermediate layer of mlp - to split
-                dim_intermediate_expanded = mtf.Dimension("intermediate_expanded", intermediate_size)
+                dim_intermediate_expanded = mtf.Dimension(
+                    "intermediate_expanded", intermediate_size)
 
-                m = mlp_fn(res_x, "mlp", dim_intermediate_expanded, variable_dtype=variable_dtype, params=params)
-                aux_loss = mtf.zeros(x.mesh, mtf.Shape([]), dtype=variable_dtype.slice_dtype)
+                m = mlp_fn(res_x, "mlp", dim_intermediate_expanded,
+                           variable_dtype=variable_dtype, params=params)
+                aux_loss = mtf.zeros(x.mesh, mtf.Shape(
+                    []), dtype=variable_dtype.slice_dtype)
 
-            x = x + pre_residual_fn((m * mult), "norm_rezero_2", variable_dtype)
+            x = x + pre_residual_fn((m * mult),
+                                    "norm_rezero_2", variable_dtype)
             return x, aux_loss
 
     return fn
@@ -99,7 +109,8 @@ def block(params, scope, layer_num, bias, sequence_dim, memory_length_dim, varia
 def model(mtf_features, other_features, params, mesh, variable_dtype, context=None):
     """A GPT style model implemented in mesh tensorflow."""
 
-    x, batch_dim, sequence_dim, embd_dim, vocab_dim, embed_sequence_dim = parse_inputs(mtf_features, other_features)
+    x, batch_dim, sequence_dim, embd_dim, vocab_dim, embed_sequence_dim = parse_inputs(
+        mtf_features, other_features)
 
     if is_incremental_inference(context):
         # reshape inputs if in inference mode
@@ -111,7 +122,8 @@ def model(mtf_features, other_features, params, mesh, variable_dtype, context=No
     if not use_axial_pos_emb:
         # Use standard position encoding
         wpe = mtf.get_variable(mesh, "wpe", mtf.Shape([embed_sequence_dim, embd_dim]),
-                               initializer=tf.random_normal_initializer(stddev=0.01),
+                               initializer=tf.random_normal_initializer(
+                                   stddev=0.01),
                                master_dtype=variable_dtype.master_dtype,
                                slice_dtype=variable_dtype.slice_dtype,
                                activation_dtype=variable_dtype.activation_dtype)
@@ -120,7 +132,8 @@ def model(mtf_features, other_features, params, mesh, variable_dtype, context=No
 
     # Text encoding
     wte = mtf.get_variable(mesh, "wte", mtf.Shape([vocab_dim, embd_dim]),
-                           initializer=tf.random_normal_initializer(stddev=0.02),
+                           initializer=tf.random_normal_initializer(
+                               stddev=0.02),
                            master_dtype=variable_dtype.master_dtype,
                            slice_dtype=variable_dtype.slice_dtype,
                            activation_dtype=variable_dtype.activation_dtype)
@@ -129,22 +142,25 @@ def model(mtf_features, other_features, params, mesh, variable_dtype, context=No
         # Text embedding
         h = mtf.gather(wte, x, vocab_dim)
         if params["embed_dropout"] > 0 and params["mode"] == "train":
-            h = mtf.dropout(h, rate=params["embed_dropout"], name="wte_dropout")
+            h = mtf.dropout(
+                h, rate=params["embed_dropout"], name="wte_dropout")
 
     with tf.variable_scope("pos_embd"):
         # Positional embedding
         position_indices = mtf.range(mesh, sequence_dim, tf.int64) if not is_incremental_inference(context) else (
-                context.position - 1)
+            context.position - 1)
         pos_emb = mtf.gather(wpe, position_indices, wpe.shape[0])
         if params["embed_dropout"] > 0 and params["mode"] == "train":
-            pos_emb = mtf.dropout(pos_emb, rate=params["embed_dropout"], name="wte_dropout")
+            pos_emb = mtf.dropout(
+                pos_emb, rate=params["embed_dropout"], name="wte_dropout")
         h += pos_emb
 
     aux_losses = 0  # instantiate auxiliary losses (for MOE models)
 
     for layer in range(params["n_layer"]):
         # attn blocks
-        share_parameters = exists(params["share_parameters"]) and params["share_parameters"] == True
+        share_parameters = exists(
+            params["share_parameters"]) and params["share_parameters"] == True
         block_scope = f"h{layer}" if not share_parameters else ""
 
         block_fn = block(params=params, scope=block_scope, layer_num=layer,
@@ -155,25 +171,31 @@ def model(mtf_features, other_features, params, mesh, variable_dtype, context=No
                          context=context)
 
         # If true and in train mode, enable gradient checkpointing
-        recompute_grad = params["recompute_grad"] and (params["mode"] == "train") == True
-        h, loss = block_fn(h) if not recompute_grad else mtf.recompute_grad(block_fn, [h])
+        recompute_grad = params["recompute_grad"] and (
+            params["mode"] == "train") == True
+        h, loss = block_fn(
+            h) if not recompute_grad else mtf.recompute_grad(block_fn, [h])
         aux_losses += loss
 
     no_weight_tie_emb = params["no_weight_tie"] == True
     if no_weight_tie_emb:
         with tf.variable_scope("wte_final_linear"):
-            logits = linear(h, "linear_out", vocab_dim, variable_dtype=variable_dtype, params=params)
+            logits = linear(h, "linear_out", vocab_dim,
+                            variable_dtype=variable_dtype, params=params)
     else:
         # Layer normalize & affine transform
         h = layer_norm(h, "ln_f", variable_dtype=variable_dtype)
-        seq_dim = sequence_dim if not is_incremental_inference(context) else mtf.Dimension("sequence", 1)
+        seq_dim = sequence_dim if not is_incremental_inference(
+            context) else mtf.Dimension("sequence", 1)
         with tf.variable_scope("wte_final_einsum"):
             # Equivalent to tf.matmul
-            logits = mtf.einsum([h, wte], output_shape=[batch_dim, seq_dim, vocab_dim])
+            logits = mtf.einsum([h, wte], output_shape=[
+                                batch_dim, seq_dim, vocab_dim])
 
     if params["mode"] in ["train", "eval"]:
         labels = mtf_features["labels"]
-        z_loss = params.get("z_loss", 1e-4)  # an auxiliary loss used to stabilize mtf xentropy
+        # an auxiliary loss used to stabilize mtf xentropy
+        z_loss = params.get("z_loss", 1e-4)
 
         # Go to full precision for the logits
         logits = mtf.cast(logits, tf.float32)
@@ -189,12 +211,14 @@ def model(mtf_features, other_features, params, mesh, variable_dtype, context=No
         # Make sure labels with padding tokens are not counted in the loss
         if not params["causal"]:
             padding_id = params.get("padding_id", 0)
-            loss_batch = mtf.where(mtf.not_equal(labels, padding_id), loss_batch, mtf.zeros_like(loss_batch))
+            loss_batch = mtf.where(mtf.not_equal(
+                labels, padding_id), loss_batch, mtf.zeros_like(loss_batch))
 
         with tf.variable_scope("reduce_mean_final"):
             loss = mtf.reduce_mean(loss_batch)
 
-        loss += aux_losses  # Add on auxiliary losses (currently only used for MoE)
+        # Add on auxiliary losses (currently only used for MoE)
+        loss += aux_losses
         loss /= params["num_microbatches"]
         # Convert to train dtype
         loss = mtf.cast(loss, variable_dtype.slice_dtype)

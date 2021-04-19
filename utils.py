@@ -9,7 +9,6 @@ import tensorflow.compat.v1 as tf
 import tensorflow.compat.v2 as tf2
 import mesh_tensorflow as mtf
 from data.encoders import fetch_encoder
-import re
 
 
 def setup_logging(args):

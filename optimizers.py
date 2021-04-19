@@ -45,7 +45,7 @@ def get_optimizer(mesh, loss, params, variable_dtype, inp_var_grads=None):
             learning_rate,
             global_step,
             end_step,
-            alpha=0.1  # Alpha is min lr value as a fraction of init lr.
+            alpha=min_lr_frac  # Alpha is min lr value as a fraction of init lr.
         )
 
     if params["warmup_steps"] > 0:

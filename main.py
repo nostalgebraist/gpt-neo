@@ -61,6 +61,8 @@ def parse_args():
                         help="(experimental) use entmax sampling")
     parser.add_argument("--export", action="store_true",
                         help="If set, will export the model.")
+    parser.add_argument("--noise_scale", action="store_true",
+                        help="Measure gradient noise scale")
     args = parser.parse_args()
     assert args.model is not None, "Model must be set"
     return args
@@ -143,6 +145,7 @@ def main(args):
     params['predict_temperature'] = args.predict_temperature
     params['predict_top_k'] = args.predict_top_k
     params['predict_max_steps'] = args.predict_max_steps
+    params['noise_scale'] = args.noise_scale
 
     logger.info(f"params = {params}")
 

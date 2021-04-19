@@ -8,6 +8,7 @@ import sys
 import tensorflow.compat.v1 as tf
 import tensorflow.compat.v2 as tf2
 import mesh_tensorflow as mtf
+import six
 from data.encoders import fetch_encoder
 
 
@@ -324,18 +325,18 @@ def serialize_training_step(features, model_fn, batch_dim, num_splits, grad_fn=N
     for v in features.values():
         mesh = v.mesh
         graph = v.graph
-    microbatch_dim = Dimension("microbatch", num_splits)
-    smaller_batch_dim = Dimension(batch_dim.name, batch_dim.size // num_splits)
+    microbatch_dim = mtf.Dimension("microbatch", num_splits)
+    smaller_batch_dim = mtf.Dimension(batch_dim.name, batch_dim.size // num_splits)
     cache = {}
 
     def select(t, microbatch_num):
-        return gather(
-            replace_dimensions(
+        return mtf.gather(
+            mtf.replace_dimensions(
                 t, batch_dim, [smaller_batch_dim, microbatch_dim]),
             microbatch_num, microbatch_dim)
 
     def cond_fn(microbatch_num):
-        return less(microbatch_num, num_splits)
+        return mtf.less(microbatch_num, num_splits)
 
     def body_fn(microbatch_num):
         """Body function for mtf.while_loop.
@@ -350,7 +351,7 @@ def serialize_training_step(features, model_fn, batch_dim, num_splits, grad_fn=N
 
         outputs = model_fn(my_features)
 
-        grads = gradients(
+        grads = mtf.gradients(
             [outputs["loss"]], [v.outputs[0] for v in graph.trainable_variables])
         if None in grads:
             for var, var_grad in zip(graph.trainable_variables, grads):
@@ -378,12 +379,12 @@ def serialize_training_step(features, model_fn, batch_dim, num_splits, grad_fn=N
                 # across microbatches.
                 # Here we pad the tensor for each microbatch - summing will complete
                 #  the concatenation.
-                t = einsum(
-                    [t, one_hot(microbatch_num, microbatch_dim, dtype=t.dtype)],
-                    output_shape=replace_dimensions(
+                t = mtf.einsum(
+                    [t, mtf.one_hot(microbatch_num, microbatch_dim, dtype=t.dtype)],
+                    output_shape=mtf.replace_dimensions(
                         t.shape, smaller_batch_dim,
                         [smaller_batch_dim, microbatch_dim]))
-                t = replace_dimensions(
+                t = mtf.replace_dimensions(
                     t, [smaller_batch_dim, microbatch_dim], batch_dim)
                 ret.append(t)
             else:
@@ -392,8 +393,8 @@ def serialize_training_step(features, model_fn, batch_dim, num_splits, grad_fn=N
         # we also want to sum the gradients.
         ret.extend(grads)
         return ret
-    while_out = while_loop(
-        cond_fn, body_fn, [constant(mesh, 0, dtype=tf.int32)],
+    while_out = mtf.while_loop(
+        cond_fn, body_fn, [mtf.constant(mesh, 0, dtype=tf.int32)],
         has_accumulators=True)
     num_outputs = len(cache["output_keys"])
     combined_outputs = {}

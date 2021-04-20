@@ -42,7 +42,7 @@ def get_optimizer(mesh, loss, params, variable_dtype, inp_var_grads=None):
             learning_rate,
             global_step,
             end_step,
-            end_learning_rate=params["lr"]*min_lr_frac,
+            end_learning_rate=params["lr"] * min_lr_frac,
             power=1.0,
             cycle=False)
     elif params["lr_decay"] == "cosine":

@@ -246,6 +246,9 @@ def model_fn(features, labels, mode, params):
             gn_small = output_dict['squared_global_norm']
             gn_big = squared_global_norm(var_grads)['squared_global_norm']
 
+            # not sure why this is necessary, seemed to work -robnost
+            gn_small = gn_small * num_microbatches
+
             B_small = num_microbatches
             B_big = batch_size
 

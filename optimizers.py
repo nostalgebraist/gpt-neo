@@ -34,7 +34,7 @@ def get_optimizer(mesh, loss, params, variable_dtype, inp_var_grads=None):
     var_grads_fp = [mtf.cast(v, variable_dtype.slice_dtype) for v in var_grads]
 
     # decrease LR to final lr (lr*0.1) by this step - defaults to train_steps
-    end_step = params.get("lr_decay_end", params["train_steps"])
+    end_step = params.get("lr_decay_end", params["train_steps"]) - step_shift
     min_lr_frac = params.get('min_lr_frac', 0.1)
 
     if params["lr_decay"] == "linear":

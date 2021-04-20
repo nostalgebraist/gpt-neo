@@ -408,8 +408,11 @@ def serialize_training_step(features, model_fn, batch_dim, num_splits, grad_fn=N
 
 
 def squared_global_norm(tensors):
+    print(tensors)
+    sums = [mtf.reduce_sum(mtf.square(t)) for t in tensors]
+    print(sums)
     return {
         'squared_global_norm': sum(
-            [mtf.reduce_sum(mtf.square(t)) for t in tensors]
+            sums
         )
     }

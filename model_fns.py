@@ -220,7 +220,6 @@ def model_fn(features, labels, mode, params):
     params["num_microbatches"] = num_microbatches
 
     if num_microbatches > 1:
-
         # For serialize_training_step we need to modify the model to output results in a dict
         def serialized_fn(mtf_features):
             if params["model"] == "GPT":
@@ -244,7 +243,7 @@ def model_fn(features, labels, mode, params):
         logits = output_dict["logits"]
 
         if params['noise_scale']:
-            gn_small = output_dict['squared_global_norm'] / num_microbatches
+            gn_small = output_dict['squared_global_norm']
             gn_big = squared_global_norm(var_grads)['squared_global_norm']
 
             B_small = num_microbatches

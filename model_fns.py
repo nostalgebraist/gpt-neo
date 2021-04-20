@@ -249,7 +249,7 @@ def model_fn(features, labels, mode, params):
             # not sure why this is necessary, seemed to work -robnost
             gn_small = gn_small * num_microbatches
 
-            B_small = num_microbatches
+            B_small = params['tokens_per_mb_per_replica'] / params['n_ctx']
             B_big = batch_size
 
             G_noise = (B_big * gn_big - B_small * gn_small) / (

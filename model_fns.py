@@ -246,7 +246,13 @@ def model_fn(features, labels, mode, params):
             gn_small = output_dict['squared_global_norm']
             gn_big = squared_global_norm(var_grads)['squared_global_norm']
 
-            # not sure why this is necessary, seemed to work -robnost
+            # cancels an extra factor due to `loss` being scaled down by 1/num_microbatches in `gpt2`
+            #
+            # if L is the unscaled loss, then we are summing this over the microbatches:
+            #       (grad norm of L / num_microbatches)^2
+            # the sum has num_microbatches terms, so it's
+            #        ~ num_microbatches * (grad norm of L)^2 / (num_microbatches)^2
+            # with an extra 1/num_microbatches` left
             gn_small = gn_small * num_microbatches
 
             B_small = params['tokens_per_mb_per_replica'] / params['n_ctx']

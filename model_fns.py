@@ -290,8 +290,10 @@ def model_fn(features, labels, mode, params):
                 grad_norm = mtf.sqrt(mtf.reduce_sum(mtf.square(g)))
                 mtf.scalar_summary("grads/norm" + g.name[:-2], grad_norm)
         if params['noise_scale']:
+            mtf.scalar_summary("gn_small", gn_small)
+            mtf.scalar_summary("gn_big", gn_big)
             mtf.scalar_summary("G_noise", G_noise)
-            mtf.scalar_summary("G_noise", S_noise)
+            mtf.scalar_summary("S_noise", S_noise)
     else:
         # For now, we can only export fully-replicated tensors.
         # This has to be done before lowering or they will not be included in the graph

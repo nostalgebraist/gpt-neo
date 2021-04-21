@@ -16,6 +16,14 @@ import math
 from tensorflow.python.training.saver import BaseSaverBuilder
 
 
+class OomReportingHook(tf.estimator.SessionRunHook):
+    def before_run(self, run_context):
+        return tf.estimator.SessionRunArgs(fetches=[],  # no extra fetches
+                                           options=tf.RunOptions(
+                                               report_tensor_allocations_upon_oom=True)
+                                           )
+
+
 class CastFromBFloat16SaverBuilder(BaseSaverBuilder):
     # Based on tensorflow.python.training.saver.BulkSaverBuilder.bulk_restore
     def bulk_restore(self, filename_tensor, saveables, preferred_shard,
@@ -201,11 +209,13 @@ def model_fn(features, labels, mode, params):
                     axis=0,
                     name="mtf_ready_op"))
 
+        oom_hook = OomReportingHook()
+
         return tpu_estimator.TPUEstimatorSpec(
             mode=tf.estimator.ModeKeys.PREDICT,
             predictions=predictions,
             scaffold_fn=scaffold_fn,
-            prediction_hooks=[mtf.MtfRestoreHook(lowering)])
+            prediction_hooks=[mtf.MtfRestoreHook(lowering), oom_hook])
 
     # We're not predicting, so we better be training or evaluating
     assert (mode == tf.estimator.ModeKeys.TRAIN or mode ==

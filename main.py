@@ -122,7 +122,7 @@ def main(args):
     params["num_cores"] = mesh_shape.size
     params["auto_layout"] = args.auto_layout
     params["auto_layout_and_mesh_shape"] = args.auto_layout_and_mesh_shape
-    params["use_tpu"] = True if not args.tpu is None else False
+    params["use_tpu"] = True if args.tpu is not None else False
     params["gpu_ids"] = args.gpu_ids
     params["steps_per_checkpoint"] = args.steps_per_checkpoint
     # Expand attention types param
@@ -148,6 +148,7 @@ def main(args):
     params['predict_top_k'] = args.predict_top_k
     params['predict_max_steps'] = args.predict_max_steps
     params['noise_scale'] = args.noise_scale
+    params['predict_no_pad'] = args.predict_no_pad
 
     logger.info(f"params = {params}")
 

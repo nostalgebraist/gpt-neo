@@ -99,6 +99,10 @@ def model_fn(features, labels, mode, params):
     # Build mtf mesh object
     mesh = mtf.Mesh(graph, "my_mesh", var_placer)
 
+    # temp -rob
+    print(f"model_fn features: {repr(features)}")
+    print(f"model_fn labels: {repr(labels)}")
+
     # Build mtf_features & seq length dict for getting number of microbatches
     # We need to pack inputs into a dict to pass into serialize_training_step
     features_dict = {"inputs": features, "labels": labels}

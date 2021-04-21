@@ -63,7 +63,7 @@ def sample_autoregressive(partial_sequences,
 
     inputs = partial_sequences  # Partial sequences to fill in
     batch_dims = inputs.shape.dims[:-1]
-    length_dim = inputs.shape.dims[-1]
+    length_dim_first_part = inputs.shape.dims[-1]
     padding_id = params.get("padding_id", 0)
     slow_sampling = params.get("slow_sampling", False)
 
@@ -79,22 +79,28 @@ def sample_autoregressive(partial_sequences,
     print(type(inputs.shape.dims))
     print()
 
-    print(length_dim)
-    print(type(length_dim))
+    print(length_dim_first_part)
+    print(type(length_dim_first_part))
     print()
 
     initial_position = mtf.reduce_sum(
-        mtf.to_int32(mtf.not_equal(inputs, padding_id)), reduced_dim=length_dim)  # Gets position where zero padding starts
+        mtf.to_int32(mtf.not_equal(inputs, padding_id)), reduced_dim=length_dim_first_part)  # Gets position where zero padding starts
 
-    length_range = mtf.range(inputs.mesh, length_dim, tf.int32)
+    length_dim_full = mtf.Dimension(name='sequence', size=2048)  # lazy hardcoded for now -rob
+    length_range_first_part = mtf.range(inputs.mesh, length_dim_first_part, tf.int32)
+    length_range_full = mtf.range(inputs.mesh, length_dim_full, tf.int32)
+
     input_full_attention = True  # for now hardcode this to true bc lazy
     if input_full_attention:
         # Vanilla autoregressive model - each position can see previous positions.
         # Think this feeds in to the loop fn and tells each position where it can attend to?
-        read_priority = write_priority = length_range * mtf.to_int32(
-            mtf.greater(length_range, initial_position))
+        read_priority_first_part = write_priority_first_part = length_range_first_part * mtf.to_int32(
+            mtf.greater(length_range_first_part, initial_position))
+        read_priority_full = write_priority_full = length_range_full * mtf.to_int32(
+            mtf.greater(length_range_full, initial_position))
     else:
-        read_priority = write_priority = length_range
+        read_priority_first_part = write_priority_first_part = length_range_first_part
+        read_priority_full = write_priority_full = length_range_full
 
     # Builds context to pass around internally
     # The 'first part' context records initial states of k / v / x
@@ -104,10 +110,10 @@ def sample_autoregressive(partial_sequences,
             model=None,
             mesh=inputs.mesh,
             batch_dims=batch_dims,
-            length_dim=length_dim,
+            length_dim=length_dim_first_part,
             variable_dtype=variable_dtype,
             mode="first_part",
-            position=length_range,
+            position=length_range_first_part,
             position_is_default=True,
             new_states=[],
             initial_position=initial_position,
@@ -117,8 +123,8 @@ def sample_autoregressive(partial_sequences,
             constant_states=[],
             shared_params=shared_params,
             encoder_layer_outputs=encoder_layer_outputs,
-            write_priority=write_priority,
-            read_priority=read_priority,
+            write_priority=write_priority_first_part,
+            read_priority=read_priority_first_part,
             inputs=inputs,
             encoder_inputs=encoder_inputs)
 
@@ -140,11 +146,11 @@ def sample_autoregressive(partial_sequences,
     if stop_at_token is not None:
         partial_sequences_eos_count = mtf.reduce_sum(
             mtf.to_int32(mtf.equal(partial_sequences, stop_at_token)),
-            reduced_dim=length_dim)
+            reduced_dim=length_dim_first_part)
 
     def cond_fn(position, ids, *unused_states):
         """Should we run another loop iteration?"""
-        past_end = mtf.greater_equal(position, length_dim.size)
+        past_end = mtf.greater_equal(position, length_dim_full.size)
         if max_steps:
             past_end = mtf.logical_or(
                 past_end, mtf.greater_equal(position - initial_position, max_steps))
@@ -153,7 +159,7 @@ def sample_autoregressive(partial_sequences,
         if stop_at_token is not None:
             eos_count = mtf.reduce_sum(
                 mtf.to_int32(mtf.equal(ids, stop_at_token)),
-                reduced_dim=length_dim)
+                reduced_dim=length_dim_full)
             has_additional_eos = mtf.greater(
                 eos_count, partial_sequences_eos_count)
             is_done = mtf.logical_or(is_done, has_additional_eos)
@@ -168,7 +174,7 @@ def sample_autoregressive(partial_sequences,
             model=None,
             mesh=inputs.mesh,
             batch_dims=batch_dims,
-            length_dim=length_dim,
+            length_dim=length_dim_full,
             variable_dtype=variable_dtype,
             mode="incremental",
             position=position,
@@ -181,8 +187,8 @@ def sample_autoregressive(partial_sequences,
             encoder_sequence_id=encoder_sequence_id,
             shared_params=shared_params,
             encoder_layer_outputs=encoder_layer_outputs,
-            write_priority=write_priority,
-            read_priority=read_priority,
+            write_priority=write_priority_full,
+            read_priority=read_priority_full,
             inputs=ids,
             encoder_inputs=encoder_inputs) if not slow_sampling else None
 
@@ -212,11 +218,11 @@ def sample_autoregressive(partial_sequences,
 
         if slow_sampling:
             ids_this_step = mtf.shift(
-                ids_this_step, offset=1, dim=length_dim, wrap=False)
+                ids_this_step, offset=1, dim=length_dim_full, wrap=False)
         else:
             ids_this_step = mtf.reshape(ids_this_step, (batch_dims))
 
-        one_hot = mtf.one_hot(position, length_dim, dtype=tf.int32)
+        one_hot = mtf.one_hot(position, length_dim_full, dtype=tf.int32)
         one_new_id = ids_this_step * one_hot
         new_ids = (1 - one_hot) * ids + one_new_id
         new_position = position + 1
@@ -234,7 +240,7 @@ def sample_autoregressive(partial_sequences,
         # Remove partial sequences from outputs
         partial_length = mtf.reduce_sum(
             mtf.to_int32(mtf.not_equal(partial_sequences, padding_id)),
-            reduced_dim=length_dim)
+            reduced_dim=length_dim_full)
         outputs = mtf.dynamic_shift(
-            outputs, -partial_length, length_dim, wrap=False)
+            outputs, -partial_length, length_dim_full, wrap=False)
     return outputs

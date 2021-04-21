@@ -69,8 +69,19 @@ def sample_autoregressive(partial_sequences,
 
     print(inputs)
     print(type(inputs))
+    print()
+
     print(inputs.shape)
     print(type(inputs.shape))
+    print()
+
+    print(inputs.shape.dims)
+    print(type(inputs.shape.dims))
+    print()
+
+    print(length_dim)
+    print(type(length_dim))
+    print()
 
     initial_position = mtf.reduce_sum(
         mtf.to_int32(mtf.not_equal(inputs, padding_id)), reduced_dim=length_dim)  # Gets position where zero padding starts

@@ -99,15 +99,14 @@ def model_fn(features, labels, mode, params):
     # Build mtf mesh object
     mesh = mtf.Mesh(graph, "my_mesh", var_placer)
 
-    # temp -rob
-    print(f"model_fn features: {repr(features)}")
-    print(f"model_fn labels: {repr(labels)}")
-
     # Build mtf_features & seq length dict for getting number of microbatches
     # We need to pack inputs into a dict to pass into serialize_training_step
     features_dict = {"inputs": features, "labels": labels}
     sequence_length_dict = {
         "inputs": params["n_ctx"], "labels": params["n_ctx"]}
+
+    if mode == tf.estimator.ModeKeys.PREDICT and params['predict_no_pad']:
+        sequence_length_dict["inputs"] = features.shape[1]
 
     params = add_mode_to_params(params, mode)
     batch_size = get_batch_size(params)

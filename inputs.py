@@ -150,6 +150,8 @@ def pred_input(params, logger, enc=None,
         path_to_prompt, "r").read()
     tokens = encode(enc, text)
 
+    logger.info(f"tokens:\n{repr(tokens)}\n")
+
     if len(tokens) > params["n_ctx"]:
         logger.info(
             "The length of your input prompt is longer than the model's context length - truncating input.")
@@ -157,7 +159,9 @@ def pred_input(params, logger, enc=None,
     if len(tokens) < params["n_ctx"]:
         tokens = tf.pad(tokens, [
                         [0, params["n_ctx"] - len(tokens)]], constant_values=params["padding_id"])
+        logger.info(f"tokens (padded):\n{repr(tokens)}\n")
     t = tf.broadcast_to(tokens, [params["batch_size"], params["n_ctx"]])
+    logger.info(f"t:\n{repr(t)}\n")
     dataset = tf.data.Dataset.from_tensors(t)
 
     def _dummy_labels(x):

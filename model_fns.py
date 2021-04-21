@@ -106,7 +106,12 @@ def model_fn(features, labels, mode, params):
         "inputs": params["n_ctx"], "labels": params["n_ctx"]}
 
     if mode == tf.estimator.ModeKeys.PREDICT and params['predict_no_pad']:
-        sequence_length_dict["inputs"] = features.shape[1]
+        print(f"features.shape: {features.shape}")
+        print(f"features.shape[1]: {features.shape[1]}")
+        print(f"type(features.shape[1]): {type(features.shape[1])}")
+        print(f"features.shape[1].value: {features.shape[1].value}")
+        print(f"type(features.shape[1].value): {type(features.shape[1].value)}")
+        sequence_length_dict["inputs"] = features.shape[1].value
 
     params = add_mode_to_params(params, mode)
     batch_size = get_batch_size(params)

@@ -48,6 +48,8 @@ def parse_args():
                         default=0, help="predict top_k")
     parser.add_argument("--predict_max_steps", type=int,
                         default=0, help="predict max_steps")
+    parser.add_argument("--predict_no_pad", action="store_true",
+                        help="Don't pad input")
     parser.add_argument("--eval", action="store_true",
                         help="If set, run model in evaluation mode.")
     parser.add_argument("--prompt", type=str, help="path to .txt file containing a prompt for prediction. If empty, "
@@ -99,7 +101,7 @@ def main(args):
     encoder = fetch_encoder(params)
 
     pred_input_fn = partial(
-        pred_input_fn, path_to_prompt=args.prompt, logger=logger, enc=encoder)
+        pred_input_fn, path_to_prompt=args.prompt, logger=logger, enc=encoder, do_padding=(not args.predict_no_pad))
 
     # Sample from Dataset if check dataset flag is on
     if args.check_dataset:

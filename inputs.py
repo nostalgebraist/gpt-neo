@@ -140,8 +140,7 @@ def sequential_input(params, global_step=None, eval=False):
     return dataset.repeat()
 
 
-def pred_input(params, logger, enc=None,
-               path_to_prompt=""):
+def pred_input(params, logger, enc=None, path_to_prompt="", do_padding=True):
     unicorns = "In a shocking finding, scientists discovered a herd of unicorns living in a remote, " \
                "previously unexplored valley, in the Andes Mountains. Even more surprising to the " \
                "researchers was the fact that the unicorns spoke perfect English."
@@ -156,11 +155,14 @@ def pred_input(params, logger, enc=None,
         logger.info(
             "The length of your input prompt is longer than the model's context length - truncating input.")
         tokens = tokens[len(tokens) - params["n_ctx"]:]
-    if len(tokens) < params["n_ctx"]:
+    if len(tokens) < params["n_ctx"] and do_padding:
         tokens = tf.pad(tokens, [
                         [0, params["n_ctx"] - len(tokens)]], constant_values=params["padding_id"])
         logger.info(f"tokens (padded):\n{repr(tokens)}\n")
-    t = tf.broadcast_to(tokens, [params["batch_size"], params["n_ctx"]])
+    if do_padding:
+        t = tf.broadcast_to(tokens, [params["batch_size"], params["n_ctx"]])
+    else:
+        t = tf.broadcast_to(tokens, [params["batch_size"], len(tokens)])
     logger.info(f"t:\n{repr(t)}\n")
     dataset = tf.data.Dataset.from_tensors(t)
 

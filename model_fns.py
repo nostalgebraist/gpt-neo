@@ -363,10 +363,12 @@ def model_fn(features, labels, mode, params):
             saver_kwargs = {}
             if params["precision"] == "mixed_precision_load_bfloat16_once":
                 saver_kwargs['builder'] = CastFromBFloat16SaverBuilder()
+            max_to_keep = params.get('max_to_keep', 3)
+            print(f"using max_to_keep {max_to_keep}")
             saver = tf.train.Saver(
                 tf.global_variables(),
                 sharded=True,
-                max_to_keep=3,
+                max_to_keep=max_to_keep,
                 keep_checkpoint_every_n_hours=2,
                 defer_build=False,
                 save_relative_paths=True,

@@ -72,6 +72,10 @@ def main(args):
     # Setup logging
     logger = setup_logging(args)
 
+    # testing - rob
+    if args.export:
+        tf.enable_resource_variables()
+
     # Read params of model
     params = fetch_model_params(args.model)
 

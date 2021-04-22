@@ -21,7 +21,7 @@ def load_scalar_summaries(path):
 def load_multi(prefix, fns, extras=[], alpha=0.99):
     paths = [prefix + fn for fn in fns] + list(extras)
     df = pd.concat([load_scalar_summaries(path) for path in paths]).sort_index()
-    df = df[~df.index.duplicated(keep="first")]
+    df = df[~df.index.duplicated(keep="last")]
 
     df.loc[df.S_noise > 100, "G_noise"] = None
     df.loc[df.S_noise > 100, "S_noise"] = None

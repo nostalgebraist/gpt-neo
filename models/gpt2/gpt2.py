@@ -112,6 +112,10 @@ def model(mtf_features, other_features, params, mesh, variable_dtype, context=No
     x, batch_dim, sequence_dim, embd_dim, vocab_dim, embed_sequence_dim = parse_inputs(
         mtf_features, other_features)
 
+    print(("x", x))
+    print(("batch_dim", batch_dim))
+    print(("sequence_dim", sequence_dim))
+
     if is_incremental_inference(context):
         # reshape inputs if in inference mode
         x = mtf.gather(x, context.position - 1, sequence_dim)

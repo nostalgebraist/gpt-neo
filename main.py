@@ -18,7 +18,7 @@ import json
 import numpy
 
 
-def parse_args():
+def make_argparser():
     # Parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--tpu", type=str,
@@ -67,7 +67,11 @@ def parse_args():
                         default=3, help="saver max_to_keep")
     parser.add_argument("--return_to_caller", action="store_true",
                         help="robnost")
+    return parser
 
+
+def parse_args():
+    parser = make_argparser()
     args = parser.parse_args()
     assert args.model is not None, "Model must be set"
     return args

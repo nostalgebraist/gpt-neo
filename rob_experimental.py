@@ -2,8 +2,7 @@ import numpy as np
 import tensorflow.compat.v1 as tf
 from data.encoders import encode
 
-cur_text_input = "<|endoftext|>"
-STOP_SIGNAL = "__STOP__"
+cur_text_input = ["<|endoftext|>"]
 
 
 def rob_pred_input(params, logger, enc=None, path_to_prompt=""):
@@ -11,8 +10,8 @@ def rob_pred_input(params, logger, enc=None, path_to_prompt=""):
 
     def _data_gen():
         global cur_text_input
-        while cur_text_input != STOP_SIGNAL:
-            text = cur_text_input
+        while len(cur_text_input) > 0:
+            text = cur_text_input[0]
             tokens = encode(enc, text)
 
             logger.info(f"tokens:\n{repr(tokens)}\n")

@@ -65,6 +65,8 @@ def parse_args():
                         help="Measure gradient noise scale")
     parser.add_argument("--max_to_keep", type=int,
                         default=3, help="saver max_to_keep")
+    parser.add_argument("--return_to_caller", action="store_true",
+                        help="robnost")
 
     args = parser.parse_args()
     assert args.model is not None, "Model must be set"
@@ -221,6 +223,10 @@ def main(args):
         # Predict
         predictions = estimator.predict(input_fn=pred_input_fn)
         logger.info("Predictions generated")
+
+        if args.return_to_caller:
+            return predictions
+
         enc = fetch_encoder(params)
         handle_pred_output_fn(predictions, logger, enc, params,
                               out_name=f"predictions_{args.sacred_id}_{current_step}")

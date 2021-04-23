@@ -229,7 +229,7 @@ def main(args, override_pred_input=None, override_pred_output=None):
         logger.info("Predictions generated")
 
         if args.return_to_caller:
-            return predictions
+            return predictions, params
 
         enc = fetch_encoder(params)
         handle_pred_output_fn(predictions, logger, enc, params,

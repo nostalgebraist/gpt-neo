@@ -77,7 +77,7 @@ def parse_args():
     return args
 
 
-def main(args, override_pred_input=None):
+def main(args, override_pred_input=None, override_pred_output=None):
     # Setup logging
     logger = setup_logging(args)
 
@@ -95,7 +95,7 @@ def main(args, override_pred_input=None):
     elif input_fn == "generic_text":
         input_fn = generic_text
     pred_input_fn = pred_input if override_pred_input is None else override_pred_input
-    handle_pred_output_fn = handle_pred_output
+    handle_pred_output_fn = handle_pred_output if override_pred_output is None else override_pred_output
 
     # get current step
     current_step = int(

@@ -1,19 +1,18 @@
-import argparse
-
 import mesh_tensorflow as mtf
 import tensorflow.compat.v1 as tf
 from models.gpt2 import gpt2
-from utils import get_batch_size
+from utils import get_batch_size, simd_mesh_setup
 from models.utils import biasmask_attn_weights
 from data.encoders import fetch_encoder
+from sample import sample_autoregressive
 
 from main import main, make_argparser
 
 
-def restore_ckpt_to_tf1_style(model_name: str, ckpt: str):
+def restore_ckpt_to_tf1_style(model_name: str, ckpt: str, restore_sampling: bool = False, main_extra_args: str = ""):
     ### STEP: construct params.  TODO: remove this hack and replace with the relevant fragment of main.py
 
-    argstr = f"--model {model_name} --predict --return_to_caller"
+    argstr = f"--model {model_name} --predict --return_to_caller " + main_extra_args
     parser = make_argparser()
     args = parser.parse_args(argstr.split())
 
@@ -137,30 +136,56 @@ def restore_ckpt_to_tf1_style(model_name: str, ckpt: str):
 
     ### STEP: make graph + session
 
-    with mtf.utils.outside_all_rewrites():
-        with tf.variable_scope("gpt2"):
-            mtf_logits, loss, loss_batch = gpt2.model(
-                mtf_features,
-                other_features,
-                params,
-                mesh,
-                variable_dtype=variable_dtype,
-                context=None,
-            )
+    if restore_sampling:
+        inputs = mtf_features["inputs"]
+        if params["remove_partial_sequences"] is None:
+            params["remove_partial_sequences"] = False
 
-    mtf_logits = mtf.anonymize(mtf_logits)
+        stop_at_token = None if params.get(
+            'predict_continue_past_eot') else params["eos_id"]
+
+        kwargs = {}
+        temperature = params.get('predict_temperature')
+        top_k = params.get('predict_top_k')
+        if temperature:
+            kwargs['temperature'] = temperature
+        if top_k:
+            kwargs['sampling_keep_top_k'] = top_k
+
+        mtf_samples = sample_autoregressive(
+            inputs, other_features=other_features, params=params, variable_dtype=variable_dtype,
+            remove_partial_sequences=params["remove_partial_sequences"], stop_at_token=stop_at_token,
+            sampling_use_entmax=params['sampling_use_entmax'], max_steps=params["predict_max_steps"],
+            **kwargs
+        )
+
+        mtf_return_value = mtf_samples
+    else:
+        with mtf.utils.outside_all_rewrites():
+            with tf.variable_scope("gpt2"):
+                mtf_logits, loss, loss_batch = gpt2.model(
+                    mtf_features,
+                    other_features,
+                    params,
+                    mesh,
+                    variable_dtype=variable_dtype,
+                    context=None,
+                )
+                mtf_return_value = mtf_logits
+
+    mtf_return_value = mtf.anonymize(mtf_return_value)
     lowering = mtf.Lowering(graph, {mesh: mesh_impl}, autostack=True)
-    logits = lowering.export_to_tf_tensor(mtf_logits)
+    return_value = lowering.export_to_tf_tensor(mtf_return_value)
 
     sess = tf.Session()
 
     saver = tf.train.Saver(
-      tf.global_variables(),
-      sharded=True,
-      max_to_keep=3,
-      keep_checkpoint_every_n_hours=20000,
-      defer_build=False,
-      save_relative_paths=True,
+        tf.global_variables(),
+        sharded=True,
+        max_to_keep=3,
+        keep_checkpoint_every_n_hours=20000,
+        defer_build=False,
+        save_relative_paths=True,
     )
 
     saver.restore(sess, ckpt)
@@ -170,4 +195,4 @@ def restore_ckpt_to_tf1_style(model_name: str, ckpt: str):
     restore_hook.after_create_session(sess, None)
 
     enc = fetch_encoder(params)
-    return sess, x, logits, enc
+    return sess, x, return_value, enc

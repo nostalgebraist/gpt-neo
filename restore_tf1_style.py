@@ -201,4 +201,4 @@ def restore_ckpt_to_tf1_style(model_name: str, ckpt: str, restore_sampling: bool
     restore_hook.after_create_session(sess, None)
 
     enc = fetch_encoder(params)
-    return sess, x, return_value, enc, graph, mesh_impl, variable_dtype, params, mtf_features, other_features
+    return sess, x, return_value, enc, graph, mesh_impl, variable_dtype, params, mtf_features, other_features, lowering

@@ -1,3 +1,5 @@
+from pprint import pprint
+
 import mesh_tensorflow as mtf
 import tensorflow.compat.v1 as tf
 from models.gpt2 import gpt2
@@ -17,6 +19,9 @@ def restore_ckpt_to_tf1_style(model_name: str, ckpt: str, restore_sampling: bool
     args = parser.parse_args(argstr.split())
 
     _, params = main(args)
+
+    print("params:")
+    pprint(params)
 
     ### STEP: other_features
 

@@ -11,7 +11,9 @@ from sample import sample_autoregressive
 from main import main, make_argparser
 
 
-def restore_ckpt_to_tf1_style(model_name: str, ckpt: str, restore_sampling: bool = False, main_extra_args: str = ""):
+def restore_ckpt_to_tf1_style(
+    model_name: str, ckpt: str, restore_sampling: bool = False, main_extra_args: str = "",
+):
     ### STEP: construct params.  TODO: remove this hack and replace with the relevant fragment of main.py
 
     argstr = f"--model {model_name} --predict --return_to_caller " + main_extra_args
@@ -201,4 +203,4 @@ def restore_ckpt_to_tf1_style(model_name: str, ckpt: str, restore_sampling: bool
     restore_hook.after_create_session(sess, None)
 
     enc = fetch_encoder(params)
-    return sess, x, return_value, enc, graph, mesh, mesh_impl, variable_dtype, params, mtf_features, other_features
+    return sess, x, return_value, enc, graph, mesh, mesh_impl, variable_dtype, params, mtf_features, other_features, lowering

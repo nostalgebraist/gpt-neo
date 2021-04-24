@@ -180,7 +180,7 @@ def restore_ckpt_to_tf1_style(model_name: str, ckpt: str, restore_sampling: bool
                 mtf_return_value = mtf_logits
 
     mtf_return_value = mtf.anonymize(mtf_return_value)
-    lowering = mtf.Lowering(graph, {mesh: mesh_impl}, autostack=True)
+    lowering = mtf.Lowering(graph, {mesh: mesh_impl}, autostack=False)
     return_value = lowering.export_to_tf_tensor(mtf_return_value)
 
     sess = tf.Session()

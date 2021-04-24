@@ -39,7 +39,7 @@ def restore_ckpt_to_tf1_style(model_name: str, ckpt: str, restore_sampling: bool
         var_placer, mesh_impl = simd_mesh_setup(params, mesh_shape, layout_rules)
     else:
         # var_placer = None
-        var_placer = FakePlacer("xla_gpu:0")
+        var_placer = FakePlacer("gpu:0")
         gpu_ids = params["gpu_ids"]
         mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(
             mesh_shape, layout_rules, gpu_ids

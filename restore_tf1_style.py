@@ -13,6 +13,7 @@ from main import main, make_argparser
 
 def restore_ckpt_to_tf1_style(
     model_name: str, ckpt: str, restore_sampling: bool = False, main_extra_args: str = "",
+    do_lowering=True
 ):
     ### STEP: construct params.  TODO: remove this hack and replace with the relevant fragment of main.py
 
@@ -181,26 +182,30 @@ def restore_ckpt_to_tf1_style(
                 )
                 mtf_return_value = mtf_logits
 
-    mtf_return_value = mtf.anonymize(mtf_return_value)
-    lowering = mtf.Lowering(graph, {mesh: mesh_impl}, autostack=False)
-    return_value = lowering.export_to_tf_tensor(mtf_return_value)
+    if do_lowering:
+        mtf_return_value = mtf.anonymize(mtf_return_value)
+        lowering = mtf.Lowering(graph, {mesh: mesh_impl}, autostack=False)
+        return_value = lowering.export_to_tf_tensor(mtf_return_value)
 
-    sess = tf.Session()
+        sess = tf.Session()
 
-    saver = tf.train.Saver(
-        tf.global_variables(),
-        sharded=True,
-        max_to_keep=3,
-        keep_checkpoint_every_n_hours=20000,
-        defer_build=False,
-        save_relative_paths=True,
-    )
+        saver = tf.train.Saver(
+            tf.global_variables(),
+            sharded=True,
+            max_to_keep=3,
+            keep_checkpoint_every_n_hours=20000,
+            defer_build=False,
+            save_relative_paths=True,
+        )
+        saver.restore(sess, ckpt)
 
-    saver.restore(sess, ckpt)
+        restore_hook = mtf.MtfRestoreHook(lowering)
+        restore_hook.begin()
+        restore_hook.after_create_session(sess, None)
+    else:
+        sess = tf.Session()
 
-    restore_hook = mtf.MtfRestoreHook(lowering)
-    restore_hook.begin()
-    restore_hook.after_create_session(sess, None)
+        return_value = mtf_return_value
 
     enc = fetch_encoder(params)
-    return sess, x, return_value, enc, graph, mesh, mesh_impl, variable_dtype, params, mtf_features, other_features, lowering
+    return sess, x, return_value, enc, graph, mesh, mesh_impl, variable_dtype, params, mtf_features, other_features

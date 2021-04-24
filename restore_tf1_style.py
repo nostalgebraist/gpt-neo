@@ -187,7 +187,7 @@ def restore_ckpt_to_tf1_style(model_name: str, ckpt: str, restore_sampling: bool
     lowering = mtf.Lowering(graph, {mesh: mesh_impl}, autostack=True)
     return_value = lowering.export_to_tf_tensor(mtf_return_value)
 
-    sess = tf.Session()
+    sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_placement=True))
 
     saver = tf.train.Saver(
         tf.global_variables(),

@@ -5,6 +5,7 @@ import tensorflow.compat.v1 as tf
 from models.gpt2 import gpt2
 from utils import get_batch_size
 from models.utils import biasmask_attn_weights
+from data.encoders import fetch_encoder
 
 from main import main, make_argparser
 
@@ -168,4 +169,5 @@ def restore_ckpt_to_tf1_style(model_name: str, ckpt: str):
     restore_hook.begin()
     restore_hook.after_create_session(sess, None)
 
-    return sess, x, logits
+    enc = fetch_encoder(params)
+    return sess, x, logits, enc

@@ -38,6 +38,8 @@ def restore_ckpt_to_tf1_style(
 
     # Mesh setup
     if params["use_tpu"]:
+        with estimator._ctx.with_mode(tf.estimator.ModeKeys.PREDICT) as ctx:
+            params['context'] = ctx
         var_placer, mesh_impl = simd_mesh_setup(params, mesh_shape, layout_rules)
     else:
         gpu_ids = params["gpu_ids"]

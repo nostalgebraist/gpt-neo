@@ -24,7 +24,7 @@ def restore_ckpt_to_tf1_style(
     parser = make_argparser()
     args = parser.parse_args(argstr.split())
 
-    _, params = main(args)
+    _, params, estimator = main(args)
 
     print("params:")
     pprint(params)

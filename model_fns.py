@@ -68,7 +68,7 @@ def model_fn(features, labels, mode, params):
     layout_rules = mtf.convert_to_layout_rules(params["layout"])
 
     # Mesh setup
-    if params["use_tpu"]:
+    if params["use_tpu"] or params["export"]:
         var_placer, mesh_impl = simd_mesh_setup(
             params, mesh_shape, layout_rules)
     else:

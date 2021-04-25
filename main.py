@@ -203,7 +203,6 @@ def main(args, override_pred_input=None, override_pred_output=None):
         train_batch_size=params["train_batch_size"],
         eval_batch_size=params["train_batch_size"],
         predict_batch_size=params["predict_batch_size"],
-        export_to_cpu=False,
         params=params)
 
     def _make_task_estimator(task):

@@ -1,4 +1,5 @@
 from pprint import pprint
+from collections import namedtuple
 
 import mesh_tensorflow as mtf
 import tensorflow.compat.v1 as tf
@@ -9,6 +10,8 @@ from data.encoders import fetch_encoder
 from sample import sample_autoregressive
 
 from main import main, make_argparser
+
+FakePlacer = namedtuple("FakePlacer", "device_function")
 
 
 def restore_ckpt_to_tf1_style(
@@ -38,8 +41,9 @@ def restore_ckpt_to_tf1_style(
         var_placer, mesh_impl = simd_mesh_setup(params, mesh_shape, layout_rules)
     else:
         # var_placer = None
-        var_placer = None
         gpu_ids = params["gpu_ids"]
+        print(('gpu_ids', gpu_ids))
+        var_placer = FakePlacer(device_function=gpu_ids[0])
         mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(
             mesh_shape, layout_rules, gpu_ids
         )

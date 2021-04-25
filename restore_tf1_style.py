@@ -194,7 +194,10 @@ def restore_ckpt_to_tf1_style(
         lowering = mtf.Lowering(graph, {mesh: mesh_impl}, autostack=False)
         return_value = lowering.export_to_tf_tensor(mtf_return_value)
 
-        sess = tf.Session()
+        session_kwargs = {}
+        if params['use_tpu']:
+            session_kwargs['target'] = estimator.config.cluster.get_master()
+        sess = tf.Session(**session_kwargs)
 
         saver = tf.train.Saver(
             tf.global_variables(),

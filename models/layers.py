@@ -193,9 +193,9 @@ def attn(x, scope, n_state, *, attention_type, params, bias, dim_seq, memory_len
         k = mtfparams.compute_k(x)
         v = mtfparams.compute_v(x)
 
-        print(("q", q, q.shape))
-        print(("k", k, k.shape))
-        print(("v", v, v.shape))
+        # print(("q", q, q.shape))
+        # print(("k", k, k.shape))
+        # print(("v", v, v.shape))
 
         if is_incremental_inference(context):
             one_hot = mtf.one_hot(

@@ -77,6 +77,8 @@ def model_fn(features, labels, mode, params):
         mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(
             mesh_shape, layout_rules, gpu_ids)
 
+    print(("params['use_tpu']", params['use_tpu']))
+    print(("mesh_impl", mesh_impl))
     # Trainable variable precision
     # Store to checkpoints in master type, train in slice type, compute in activation type
     if params["precision"] == "bfloat16":

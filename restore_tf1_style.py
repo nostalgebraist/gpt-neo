@@ -40,10 +40,10 @@ def restore_ckpt_to_tf1_style(
     if params["use_tpu"]:
         var_placer, mesh_impl = simd_mesh_setup(params, mesh_shape, layout_rules)
     else:
-        # var_placer = None
         gpu_ids = params["gpu_ids"]
         print(('gpu_ids', gpu_ids))
-        var_placer = FakePlacer(device_function=gpu_ids[0])
+        var_placer = None
+        # var_placer = FakePlacer(device_function=gpu_ids[0])
         mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(
             mesh_shape, layout_rules, gpu_ids
         )

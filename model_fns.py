@@ -64,8 +64,6 @@ def model_fn(features, labels, mode, params):
 
     # Construct mtf graph + mesh from params
     graph = mtf.Graph()
-    if not params["use_tpu"]:
-        params["mesh_shape"] = "x:1,y:1"
     mesh_shape = mtf.convert_to_shape(params["mesh_shape"])
     layout_rules = mtf.convert_to_layout_rules(params["layout"])
 

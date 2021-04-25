@@ -224,6 +224,8 @@ def main(args, override_pred_input=None, override_pred_output=None):
     }
 
     if args.export:
+        print(("params['use_tpu']", params['use_tpu']))
+        print(("estimator._export_to_cpu", estimator._export_to_cpu))
         export_model(estimator, "export", params)
         return
 

@@ -67,6 +67,8 @@ def make_argparser():
                         default=3, help="saver max_to_keep")
     parser.add_argument("--return_to_caller", action="store_true",
                         help="robnost")
+    parser.add_argument("--export_sampling", action="store_true",
+                        help="robnost")
     return parser
 
 
@@ -160,6 +162,7 @@ def main(args, override_pred_input=None, override_pred_output=None):
     params['predict_max_steps'] = args.predict_max_steps
     params['noise_scale'] = args.noise_scale
     params['max_to_keep'] = args.max_to_keep
+    params['export_sampling'] = args.export_sampling
 
     logger.info(f"params = {params}")
 

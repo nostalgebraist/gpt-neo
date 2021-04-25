@@ -162,8 +162,9 @@ def model_fn(features, labels, mode, params):
             params["remove_partial_sequences"] = False
 
         export = params.get("export", False)
+        export_sampling = params.get("export_sampling", False)
 
-        if not export:
+        if (not export) or (export and export_sampling):
             stop_at_token = None if params.get(
                 'predict_continue_past_eot') else params["eos_id"]
 

@@ -149,7 +149,7 @@ def pred_input(params, logger, enc=None,
     if params['file_dataset']:
         ds = tf.data.Dataset.list_files(path_to_prompt)
         ds = tf.data.TFRecordDataset(ds)
-        ds = ds.map(partial(tf.io.parse_tensor, out_type=tf.int32))
+        dataset = ds.map(partial(tf.io.parse_tensor, out_type=tf.int32))
     else:
         text = unicorns if path_to_prompt == "" else open(
             path_to_prompt, "r").read()

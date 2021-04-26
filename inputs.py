@@ -147,14 +147,9 @@ def pred_input(params, logger, enc=None,
                "researchers was the fact that the unicorns spoke perfect English."
 
     if params['file_dataset']:
-        dataset = tf.data.Dataset.list_files(path_to_prompt)
-
-        def _encode_file(filename):
-            with open(filename, "r", encoding="utf-8") as f:
-                s = f.read()
-            return encode(enc, s)
-
-        dataset = dataset.map(_encode_file)
+        ds = tf.data.Dataset.list_files(path_to_prompt)
+        ds = tf.data.TFRecordDataset(ds)
+        ds = ds.map(partial(tf.io.parse_tensor, out_type=tf.int32))
     else:
         text = unicorns if path_to_prompt == "" else open(
             path_to_prompt, "r").read()

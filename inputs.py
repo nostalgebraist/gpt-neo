@@ -140,6 +140,10 @@ def sequential_input(params, global_step=None, eval=False):
     return dataset.repeat()
 
 
+def _ensure_static_shape(x, batch_size, n_ctx):
+    return tf.reshape(x[:batch_size, :n_ctx], [batch_size, n_ctx])
+
+
 def pred_input(params, logger, enc=None,
                path_to_prompt=""):
     unicorns = "In a shocking finding, scientists discovered a herd of unicorns living in a remote, " \
@@ -155,9 +159,10 @@ def pred_input(params, logger, enc=None,
         dataset = dataset.shard(2, 0)
 
         dataset = dataset.batch(params['predict_batch_size'], drop_remainder=False)
-        dataset = dataset.repeat()        # ds = tf.data.Dataset.list_files(path_to_prompt)
-        # ds = tf.data.TFRecordDataset(ds)
-        # dataset = ds.map(partial(tf.io.parse_tensor, out_type=tf.int32))
+        dataset = dataset.map(
+            partial(_ensure_static_shape, batch_size=params['predict_batch_size'], n_ctx=params['n_ctx'])
+        )
+        dataset = dataset.repeat()
     else:
         text = unicorns if path_to_prompt == "" else open(
             path_to_prompt, "r").read()

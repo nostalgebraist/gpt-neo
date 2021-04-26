@@ -24,6 +24,12 @@ class OomReportingHook(tf.estimator.SessionRunHook):
                                            )
 
 
+class ForceGetNextHook(tf.estimator.SessionRunHook):
+    """WIP"""
+    def before_run(self, run_context):
+        return tf.estimator.SessionRunArgs(fetches=[])
+
+
 class CastFromBFloat16SaverBuilder(BaseSaverBuilder):
     # Based on tensorflow.python.training.saver.BulkSaverBuilder.bulk_restore
     def bulk_restore(self, filename_tensor, saveables, preferred_shard,

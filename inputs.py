@@ -153,10 +153,8 @@ def pred_input(params, logger, enc=None,
     if params['file_dataset']:
         filenames = tf.io.gfile.glob(path_to_prompt)
         dataset = tf.data.Dataset.from_tensor_slices(filenames).repeat()
-        dataset = dataset.apply(partial(tf.data.TFRecordDataset, buffer_size=1))
+        dataset = dataset.apply(partial(tf.data.TFRecordDataset, buffer_size=0))
         dataset = dataset.map(_parse_function, num_parallel_calls=1)
-
-        dataset = dataset.shard(2, 0)
 
         dataset = dataset.batch(params['predict_batch_size'], drop_remainder=False)
         dataset = dataset.map(

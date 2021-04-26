@@ -147,9 +147,16 @@ def pred_input(params, logger, enc=None,
                "researchers was the fact that the unicorns spoke perfect English."
 
     if params['file_dataset']:
-        ds = tf.data.Dataset.list_files(path_to_prompt)
-        ds = tf.data.TFRecordDataset(ds)
-        dataset = ds.map(partial(tf.io.parse_tensor, out_type=tf.int32))
+        filenames = tf.io.gfile.glob(path_to_prompt)
+        dataset = tf.data.Dataset.from_tensor_slices(filenames).repeat()
+        dataset = dataset.apply(tf.data.TFRecordDataset)
+        dataset = dataset.map(_parse_function, num_parallel_calls=1)
+
+        dataset = dataset.batch(params['predict_batch_size'], drop_remainder=True)
+        dataset = dataset.repeat()
+        # ds = tf.data.Dataset.list_files(path_to_prompt)
+        # ds = tf.data.TFRecordDataset(ds)
+        # dataset = ds.map(partial(tf.io.parse_tensor, out_type=tf.int32))
     else:
         text = unicorns if path_to_prompt == "" else open(
             path_to_prompt, "r").read()
@@ -174,7 +181,7 @@ def pred_input(params, logger, enc=None,
         return x, x
 
     dataset = dataset.map(_dummy_labels)
-    if params.get('repeat_dataset'):
+    if params.get('repeat_dataset') and not params['file_dataset']:
         dataset = dataset.repeat()
     return dataset
 

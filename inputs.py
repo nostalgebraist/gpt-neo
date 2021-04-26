@@ -168,6 +168,8 @@ def pred_input(params, logger, enc=None,
         return x, x
 
     dataset = dataset.map(_dummy_labels)
+    if params.get('repeat_dataset'):
+        dataset = dataset.repeat()
     return dataset
 
 

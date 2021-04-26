@@ -69,6 +69,8 @@ def make_argparser():
                         help="robnost")
     parser.add_argument("--export_sampling", action="store_true",
                         help="robnost")
+    parser.add_argument("--repeat_dataset", action="store_true",
+                        help="robnost")
     return parser
 
 
@@ -163,6 +165,7 @@ def main(args, override_pred_input=None, override_pred_output=None):
     params['noise_scale'] = args.noise_scale
     params['max_to_keep'] = args.max_to_keep
     params['export_sampling'] = args.export_sampling
+    params['repeat_dataset']= args.repeat_dataset
 
     logger.info(f"params = {params}")
 

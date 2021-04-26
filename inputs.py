@@ -146,23 +146,34 @@ def pred_input(params, logger, enc=None,
                "previously unexplored valley, in the Andes Mountains. Even more surprising to the " \
                "researchers was the fact that the unicorns spoke perfect English."
 
-    text = unicorns if path_to_prompt == "" else open(
-        path_to_prompt, "r").read()
-    tokens = encode(enc, text)
+    if params['file_dataset']:
+        dataset = tf.data.Dataset.list_files(path_to_prompt)
 
-    logger.info(f"tokens:\n{repr(tokens)}\n")
+        def _encode_file(filename):
+            with open(filename, "r", encoding="utf-8") as f:
+                s = f.read()
+            return encode(enc, s)
 
-    if len(tokens) > params["n_ctx"]:
-        logger.info(
-            "The length of your input prompt is longer than the model's context length - truncating input.")
-        tokens = tokens[len(tokens) - params["n_ctx"]:]
-    if len(tokens) < params["n_ctx"]:
-        tokens = tf.pad(tokens, [
-                        [0, params["n_ctx"] - len(tokens)]], constant_values=params["padding_id"])
-        logger.info(f"tokens (padded):\n{repr(tokens)}\n")
-    t = tf.broadcast_to(tokens, [params["batch_size"], params["n_ctx"]])
-    logger.info(f"t:\n{repr(t)}\n")
-    dataset = tf.data.Dataset.from_tensors(t)
+        dataset = dataset.map(_encode_file)
+    else:
+        text = unicorns if path_to_prompt == "" else open(
+            path_to_prompt, "r").read()
+        tokens = encode(enc, text)
+
+        logger.info(f"tokens:\n{repr(tokens)}\n")
+
+        if len(tokens) > params["n_ctx"]:
+            logger.info(
+                "The length of your input prompt is longer than the model's context length - truncating input.")
+            tokens = tokens[len(tokens) - params["n_ctx"]:]
+        if len(tokens) < params["n_ctx"]:
+            tokens = tf.pad(tokens, [
+                            [0, params["n_ctx"] - len(tokens)]], constant_values=params["padding_id"])
+            logger.info(f"tokens (padded):\n{repr(tokens)}\n")
+        t = tf.broadcast_to(tokens, [params["batch_size"], params["n_ctx"]])
+        logger.info(f"t:\n{repr(t)}\n")
+
+        dataset = tf.data.Dataset.from_tensors(t)
 
     def _dummy_labels(x):
         return x, x

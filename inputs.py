@@ -7,6 +7,7 @@ import re
 import logging
 from itertools import cycle
 from utils import natural_sort
+from tensorflow.python.tpu.datasets import StreamingFilesDataset
 
 
 ### IN USE ###
@@ -152,25 +153,24 @@ def pred_input(params, logger, enc=None,
 
     if params['file_dataset']:
         filenames = tf.io.gfile.glob(path_to_prompt)
-        # dataset = tf.data.Dataset.from_tensor_slices(filenames).repeat()
-        # dataset = dataset.apply(partial(tf.data.TFRecordDataset, buffer_size=0))
-        dataset = tf.data.TFRecordDataset(filenames, buffer_size=0)
+        sdataset = StreamingFilesDataset(
+            file_reader_job='tpu_worker/replica:0/task:0/device:CPU:0',
+            worker_job='tpu_worker/replica:0/task:0/device:CPU:0',
+            files=GS_PATH + "*.tfrecords",
+            filetype='tfrecord',
+            filename_shuffle_buffer_size=0,
+            num_parallel_reads=1,
+            batch_transfer_size=1,
+            sloppy=False
+        )
         dataset = dataset.map(_parse_function, num_parallel_calls=1)
+
+        streaming_files_dataset = streaming_files_dataset.shard(2, 0)
 
         dataset = dataset.batch(params['predict_batch_size'], drop_remainder=False)
         dataset = dataset.map(
             partial(_ensure_static_shape, batch_size=params['predict_batch_size'], n_ctx=params['n_ctx'])
         )
-        dataset = dataset.repeat()
-
-        options = tf.data.Options()
-        options.experimental_optimization.autotune = False
-        options.experimental_optimization.apply_default_optimizations = False
-        options.experimental_optimization.map_and_batch_fusion = False
-        options.experimental_optimization.noop_elimination = False
-        options.experimental_optimization.shuffle_and_repeat_fusion = False
-        dataset = dataset.with_options(options)
-
     else:
         text = unicorns if path_to_prompt == "" else open(
             path_to_prompt, "r").read()

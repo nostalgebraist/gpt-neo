@@ -11,6 +11,7 @@ from tensorflow.python.ops import resources
 from sample import sample_autoregressive
 from models.gpt2 import gpt2
 import math
+from rob_experimental import ScaffoldNonFinalizing
 
 
 from tensorflow.python.training.saver import BaseSaverBuilder
@@ -207,7 +208,7 @@ def model_fn(features, labels, mode, params):
             "outputs": outputs}
 
         def scaffold_fn():
-            return tf.train.Scaffold(
+            return ScaffoldNonFinalizing(
                 local_init_op=tf.group(
                     tf.train.Scaffold.default_local_init_op(),
                     lowering.copy_masters_to_slices(),

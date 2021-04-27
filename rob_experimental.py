@@ -1,56 +1,61 @@
-import numpy as np
 import tensorflow.compat.v1 as tf
-from data.encoders import encode
-
-import text_input_singleton
 
 
-def rob_pred_input(params, logger, enc=None, path_to_prompt=""):
-    def _data_gen():
-        while len(text_input_singleton.cur_text_input) > 0:
-            text = text_input_singleton.cur_text_input[0]
-            tokens = encode(enc, text)
+class ScaffoldNonFinalizing(tf.train.Scaffold):
+  def finalize(self):
+    """Creates operations if needed and finalizes the graph."""
+    if self._init_op is None:
 
-            logger.info(f"tokens:\n{repr(tokens)}\n")
+      def default_init_op():
+        return control_flow_ops.group(
+            variables.global_variables_initializer(),
+            resources.initialize_resources(resources.shared_resources()))
 
-            if len(tokens) > params["n_ctx"]:
-                logger.info(
-                    "The length of your input prompt is longer than the model's context length - truncating input."
-                )
-                tokens = tokens[len(tokens) - params["n_ctx"] :]
-            if len(tokens) < params["n_ctx"]:
-                tokens = tokens + (params["n_ctx"] - len(tokens)) * [
-                    params["padding_id"]
-                ]
-                logger.info(f"tokens (padded):\n{repr(tokens)}\n")
-            t = np.array(tokens).reshape((1, params["n_ctx"]))
-            logger.info(f"t:\n{repr(t)}\n")
-            yield t
+      self._init_op = Scaffold.get_or_default('init_op', ops.GraphKeys.INIT_OP,
+                                              default_init_op)
+    if self._ready_op is None:
 
-    dataset = tf.data.Dataset.from_generator(
-        _data_gen,
-        output_types=tf.int64,
-        output_shapes=(
-            1,
-            params["n_ctx"],
-        ),
-    )
+      def default_ready_op():
+        return array_ops.concat([
+            variables.report_uninitialized_variables(),
+            resources.report_uninitialized_resources()
+        ], 0)
 
-    def _dummy_labels(x):
-        return x, x
+      self._ready_op = Scaffold.get_or_default('ready_op',
+                                               ops.GraphKeys.READY_OP,
+                                               default_ready_op)
+    if self._ready_for_local_init_op is None:
 
-    dataset = dataset.map(_dummy_labels)
-    return dataset
+      def default_ready_for_local_init_op():
+        return array_ops.concat([
+            variables.report_uninitialized_variables(
+                variables.global_variables()),
+            resources.report_uninitialized_resources(
+                resources.shared_resources())
+        ], 0)
 
+      self._ready_for_local_init_op = Scaffold.get_or_default(
+          'ready_for_local_init_op', ops.GraphKeys.READY_FOR_LOCAL_INIT_OP,
+          default_ready_for_local_init_op)
+    if self._local_init_op is None:
+      self._local_init_op = Scaffold.get_or_default(
+          'local_init_op', ops.GraphKeys.LOCAL_INIT_OP,
+          Scaffold.default_local_init_op)
+    if self._summary_op is None:
+      self._summary_op = Scaffold.get_or_default('summary_op',
+                                                 ops.GraphKeys.SUMMARY_OP,
+                                                 summary.merge_all)
+    # pylint: disable=g-long-lambda
+    if self._saver is None:
+      self._saver = training_saver._get_saver_or_default()  # pylint: disable=protected-access
+    # pylint: enable=g-long-lambda
+    if isinstance(self._saver, trackable_util.Checkpoint):
+      self._saver = training_saver.Saver(
+          var_list=graph_view.ObjectGraphView(
+              self._saver).frozen_saveable_objects(),
+          sharded=True)
+    else:
+      self._saver.build()
 
-def rob_handle_pred_output(predictions, logger, enc, params, out_name="test"):
-    p = next(predictions)
-    p = p["outputs"]
-
-    idx = np.argmax(p == params["padding_id"])
-    if idx > 0:
-        p = p[:idx]
-
-    text = enc.decode(p)
-
-    return text
+    logging.info('Graph was NOT finalized ;)')
+    return self

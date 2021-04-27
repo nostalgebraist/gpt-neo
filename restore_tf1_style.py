@@ -199,7 +199,7 @@ def restore_ckpt_to_tf1_style(
         sess = tf.Session(**session_kwargs)
 
         saver = tf.train.Saver(
-            tf.global_variables(),
+            tf.trainable_variables(),
             sharded=True,
             max_to_keep=3,
             keep_checkpoint_every_n_hours=20000,

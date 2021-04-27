@@ -152,11 +152,10 @@ def pred_input(params, logger, enc=None,
                "researchers was the fact that the unicorns spoke perfect English."
 
     if params['file_dataset']:
-        filenames = tf.io.gfile.glob(path_to_prompt)
         sdataset = StreamingFilesDataset(
             file_reader_job='tpu_worker/replica:0/task:0/device:CPU:0',
             worker_job='tpu_worker/replica:0/task:0/device:CPU:0',
-            files=filenames,
+            files=path_to_prompt,
             filetype='tfrecord',
             filename_shuffle_buffer_size=0,
             num_parallel_reads=1,

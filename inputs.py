@@ -152,7 +152,8 @@ def pred_input(params, logger, enc=None,
                "researchers was the fact that the unicorns spoke perfect English."
 
     if params['file_dataset']:
-        filenames = tf.io.gfile.glob(path_to_prompt)
+        # filenames = tf.io.gfile.glob(path_to_prompt)
+        filenames = [path_to_prompt + f"{i:03d}.tfrecords" for i in range(params['n_records'])]
         dataset = tf.data.Dataset.from_tensor_slices(filenames)
         dataset = dataset.apply(partial(tf.data.TFRecordDataset, buffer_size=0))
         # dataset = tf.data.TFRecordDataset(filenames, buffer_size=0)

@@ -1,7 +1,18 @@
-import tensorflow.compat.v1 as tf
+from tensorflow.python.framework import ops
+from tensorflow.python.ops import array_ops
+from tensorflow.python.ops import control_flow_ops
+from tensorflow.python.ops import resources
+from tensorflow.python.ops import variables
+from tensorflow.python.platform import tf_logging as logging
+from tensorflow.python.summary import summary
+from tensorflow.python.training import saver as training_saver
+from tensorflow.python.training.tracking import graph_view
+from tensorflow.python.training.tracking import util as trackable_util
+
+from tf.train import Scaffold
 
 
-class ScaffoldNonFinalizing(tf.train.Scaffold):
+class ScaffoldNonFinalizing(Scaffold):
   def finalize(self):
     """Creates operations if needed and finalizes the graph."""
     if self._init_op is None:

@@ -162,6 +162,15 @@ def pred_input(params, logger, enc=None,
             partial(_ensure_static_shape, batch_size=params['predict_batch_size'], n_ctx=params['n_ctx'])
         )
         dataset = dataset.repeat()
+
+        options = tf.data.Options()
+        options.experimental_optimization.autotune = False
+        options.experimental_optimization.apply_default_optimizations = False
+        options.experimental_optimization.map_and_batch_fusion = False
+        options.experimental_optimization.noop_elimination = False
+        options.experimental_optimization.shuffle_and_repeat_fusion = False
+        dataset = dataset.with_options(options)
+
     else:
         text = unicorns if path_to_prompt == "" else open(
             path_to_prompt, "r").read()

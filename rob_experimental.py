@@ -9,7 +9,7 @@ from tensorflow.python.training import saver as training_saver
 from tensorflow.python.training.tracking import graph_view
 from tensorflow.python.training.tracking import util as trackable_util
 
-from tf.train import Scaffold
+from tf.compat.v1.train import Scaffold
 
 
 class ScaffoldNonFinalizing(Scaffold):

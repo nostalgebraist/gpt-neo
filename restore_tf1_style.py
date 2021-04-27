@@ -177,7 +177,7 @@ def restore_ckpt_to_tf1_style(
         mtf_return_value = mtf_samples
     else:
         with mtf.utils.outside_all_rewrites():
-            with tf.variable_scope("gpt2"):
+            with tf.variable_scope("gpt2", reuse=tf.AUTO_REUSE):
                 mtf_logits, loss, loss_batch = gpt2.model(
                     mtf_features,
                     other_features,

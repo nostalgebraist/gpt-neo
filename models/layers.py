@@ -32,7 +32,7 @@ def norm(x, axis, epsilon=1e-8):
 
 
 def rezero(x, scope, dtype):
-    with tf.variable_scope(scope):
+    with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
         g = mtf.get_variable(
             x.mesh, "g", [], initializer=tf.constant_initializer(0), dtype=dtype)
         return x * g
@@ -42,7 +42,7 @@ def scale_norm(x, scope, *, variable_dtype, axis=sentinel, epsilon=1e-5, params=
     if axis is sentinel:
         axis = x.shape[-1]
 
-    with tf.variable_scope(scope):
+    with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
         g = mtf.get_variable(x.mesh, "g", [], initializer=tf.constant_initializer(1),
                              master_dtype=variable_dtype.master_dtype,
                              slice_dtype=variable_dtype.slice_dtype,
@@ -58,7 +58,7 @@ def layer_norm(x, scope, *, variable_dtype, axis=sentinel, epsilon=1e-5, params=
     if axis is sentinel:
         axis = x.shape[-1]
 
-    with tf.variable_scope(scope):
+    with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
         n_state = x.shape[-1]
 
         g = mtf.get_variable(x.mesh, "g", [n_state], initializer=tf.constant_initializer(1),
@@ -126,7 +126,7 @@ def linear(x, scope, nf, *, w_init_stdev=0.02, variable_dtype, params=None, scal
         # Dimension is a namedtuple of (name, size)
         w_init_stdev = w_init_stdev * (1. / math.sqrt(x.shape[-1].size))
     # Not in the variable_scope because mtf already has a variable_scope in it
-    with tf.variable_scope("conv1d_main"):
+    with tf.variable_scope("conv1d_main", reuse=tf.AUTO_REUSE):
         c = mtf.layers.dense(x, new_dims=[nf], reduced_dims=[x.shape[-1]], name=scope, use_bias=True,
                              kernel_initializer=tf.random_normal_initializer(
                                  stddev=w_init_stdev),
@@ -178,7 +178,7 @@ def attn(x, scope, n_state, *, attention_type, params, bias, dim_seq, memory_len
     num_mem_kv = params.get("num_mem_kv", 0)
     use_num_mem_kv = num_mem_kv > 0
 
-    with tf.variable_scope(scope):
+    with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
         # Compute attention inputs
         dim_kv = mtf.Dimension("features_per_head",
                                params["n_embd"] // params["n_head"])
@@ -208,7 +208,7 @@ def attn(x, scope, n_state, *, attention_type, params, bias, dim_seq, memory_len
         if exists(context):
             context.record_new_states([k, v])
 
-        with tf.variable_scope("attention"):
+        with tf.variable_scope("attention", reuse=tf.AUTO_REUSE):
             if attention_type == "local":
                 # `local_attention_1d` has built in autoregressive masking, so we don't need mask_attn_weights.
                 radius = params.get("local_attention_radius", 256)
@@ -271,10 +271,10 @@ def attn(x, scope, n_state, *, attention_type, params, bias, dim_seq, memory_len
                 raise NotImplementedError(
                     "Unknown attention type {}!".format(attention_type))
 
-        with tf.variable_scope("compute_output"):
+        with tf.variable_scope("compute_output", reuse=tf.AUTO_REUSE):
             a = mtfparams.compute_output(a, x_shape)
 
-        with tf.variable_scope("compute_output_bias"):
+        with tf.variable_scope("compute_output_bias", reuse=tf.AUTO_REUSE):
             b = mtf.get_variable(x.mesh, "o_b", [dim_embd], initializer=tf.constant_initializer(0),
                                  master_dtype=variable_dtype.master_dtype,
                                  slice_dtype=variable_dtype.slice_dtype,
@@ -288,7 +288,7 @@ def attn(x, scope, n_state, *, attention_type, params, bias, dim_seq, memory_len
 
 def mlp(x, scope, n_state, *, variable_dtype, params):
     activation_fn = get_activation_fn(params)
-    with tf.variable_scope(scope):
+    with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
         nx = x.shape[-1]
         h = activation_fn(
             linear(x, "c_fc", n_state, variable_dtype=variable_dtype, params=params))
@@ -302,7 +302,7 @@ def mlp(x, scope, n_state, *, variable_dtype, params):
 
 def mlp_glu(x, scope, n_state, *, variable_dtype, params):
     activation_fn = get_activation_fn(params)
-    with tf.variable_scope(scope):
+    with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
         nx = x.shape[-1]
         h = linear(x, "c_fc", n_state, params=params)
 

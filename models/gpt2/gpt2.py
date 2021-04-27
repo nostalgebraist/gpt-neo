@@ -18,7 +18,7 @@ def block(params, scope, layer_num, bias, sequence_dim, memory_length_dim, varia
     macaron_attention = params["macaron"] == True
 
     def fn(x):
-        with tf.variable_scope(scope):
+        with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
             nx = x.shape[-1]  # Grab last dimension from input
 
             if use_rezero:
@@ -142,14 +142,14 @@ def model(mtf_features, other_features, params, mesh, variable_dtype, context=No
                            slice_dtype=variable_dtype.slice_dtype,
                            activation_dtype=variable_dtype.activation_dtype)
 
-    with tf.variable_scope("token_embd"):
+    with tf.variable_scope("token_embd", reuse=tf.AUTO_REUSE):
         # Text embedding
         h = mtf.gather(wte, x, vocab_dim)
         if params["embed_dropout"] > 0 and params["mode"] == "train":
             h = mtf.dropout(
                 h, rate=params["embed_dropout"], name="wte_dropout")
 
-    with tf.variable_scope("pos_embd"):
+    with tf.variable_scope("pos_embd", reuse=tf.AUTO_REUSE):
         # Positional embedding
         position_indices = mtf.range(mesh, sequence_dim, tf.int64) if not is_incremental_inference(context) else (
             context.position - 1)
@@ -183,7 +183,7 @@ def model(mtf_features, other_features, params, mesh, variable_dtype, context=No
 
     no_weight_tie_emb = params["no_weight_tie"] == True
     if no_weight_tie_emb:
-        with tf.variable_scope("wte_final_linear"):
+        with tf.variable_scope("wte_final_linear", reuse=tf.AUTO_REUSE):
             logits = linear(h, "linear_out", vocab_dim,
                             variable_dtype=variable_dtype, params=params)
     else:
@@ -191,7 +191,7 @@ def model(mtf_features, other_features, params, mesh, variable_dtype, context=No
         h = layer_norm(h, "ln_f", variable_dtype=variable_dtype)
         seq_dim = sequence_dim if not is_incremental_inference(
             context) else mtf.Dimension("sequence", 1)
-        with tf.variable_scope("wte_final_einsum"):
+        with tf.variable_scope("wte_final_einsum", reuse=tf.AUTO_REUSE):
             # Equivalent to tf.matmul
             logits = mtf.einsum([h, wte], output_shape=[
                                 batch_dim, seq_dim, vocab_dim])
@@ -207,7 +207,7 @@ def model(mtf_features, other_features, params, mesh, variable_dtype, context=No
         use_entmax_loss = params.get("entmax_loss", False)
         loss_fn = mtf.layers.softmax_cross_entropy_with_logits if not use_entmax_loss else entmax_cross_entropy_with_logits
 
-        with tf.variable_scope("xentropy_final"):
+        with tf.variable_scope("xentropy_final", reuse=tf.AUTO_REUSE):
             loss_batch = loss_fn(logits=logits, targets=labels,
                                  vocab_dim=logits.shape[-1], z_loss=z_loss)
 
@@ -218,7 +218,7 @@ def model(mtf_features, other_features, params, mesh, variable_dtype, context=No
             loss_batch = mtf.where(mtf.not_equal(
                 labels, padding_id), loss_batch, mtf.zeros_like(loss_batch))
 
-        with tf.variable_scope("reduce_mean_final"):
+        with tf.variable_scope("reduce_mean_final", reuse=tf.AUTO_REUSE):
             loss = mtf.reduce_mean(loss_batch)
 
         # Add on auxiliary losses (currently only used for MoE)

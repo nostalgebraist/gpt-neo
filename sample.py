@@ -106,7 +106,7 @@ def sample_autoregressive(partial_sequences,
             inputs=inputs,
             encoder_inputs=encoder_inputs)
 
-        with tf.variable_scope("gpt2"):
+        with tf.variable_scope("gpt2", reuse=tf.AUTO_REUSE):
             logits, _, _ = gpt2.model({"inputs": inputs}, other_features, params,
                                       inputs.mesh, variable_dtype=variable_dtype, context=context_first_part)
 

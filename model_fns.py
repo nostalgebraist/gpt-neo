@@ -194,7 +194,7 @@ def model_fn(features, labels, mode, params):
 
         else:
             with mtf.utils.outside_all_rewrites():
-                with tf.variable_scope('gpt2'):
+                with tf.variable_scope('gpt2', reuse=tf.AUTO_REUSE):
                     mtf_samples, loss, loss_batch = gpt2.model(mtf_features, other_features, params, mesh,
                                                                variable_dtype=variable_dtype, context=None)
 
@@ -249,7 +249,7 @@ def model_fn(features, labels, mode, params):
         # For serialize_training_step we need to modify the model to output results in a dict
         def serialized_fn(mtf_features):
             if params["model"] == "GPT":
-                with tf.variable_scope('gpt2'):
+                with tf.variable_scope('gpt2', reuse=tf.AUTO_REUSE):
                     logits, loss, loss_batch = gpt2.model(mtf_features, other_features, params, mesh,
                                                           variable_dtype=variable_dtype)
                 return {"logits": logits, "loss": loss, "loss_batch": loss_batch}
@@ -292,7 +292,7 @@ def model_fn(features, labels, mode, params):
         # If we're not splitting into microbatches, return logits & loss as is
         if params["model"] == "GPT":
             with mtf.utils.outside_all_rewrites():
-                with tf.variable_scope('gpt2'):
+                with tf.variable_scope('gpt2', reuse=tf.AUTO_REUSE):
                     logits, loss, loss_batch = gpt2.model(mtf_features, other_features, params, mesh,
                                                           variable_dtype=variable_dtype, context=None)
         else:

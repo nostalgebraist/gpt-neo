@@ -133,8 +133,7 @@ def restore_ckpt_to_tf1_style(
 
     ### STEP: mtf_features
 
-    with tf.device("gpu:0"):
-        x = tf.placeholder(dtype=tf.int32, shape=(batch_size, params["n_ctx"]))
+    x = tf.placeholder(dtype=tf.int32, shape=(batch_size, params["n_ctx"]))
 
     features_dict = {"inputs": x}
 

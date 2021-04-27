@@ -153,8 +153,8 @@ def pred_input(params, logger, enc=None,
 
     if params['file_dataset']:
         dataset = StreamingFilesDataset(
-            file_reader_job='tpu_worker/replica:0/task:0/device:CPU:0',
-            worker_job='tpu_worker/replica:0/task:0/device:CPU:0',
+            file_reader_job='worker/replica:0/task:0/device:CPU:0',
+            worker_job='worker/replica:0/task:0/device:CPU:0',
             files=path_to_prompt,
             filetype='tfrecord',
             filename_shuffle_buffer_size=0,

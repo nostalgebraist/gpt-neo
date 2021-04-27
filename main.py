@@ -71,6 +71,8 @@ def make_argparser():
                         help="robnost")
     parser.add_argument("--repeat_dataset", action="store_true",
                         help="robnost")
+    parser.add_argument("--repeat_dataset_n_times", type=int, default=1,
+                        help="robnost")
     parser.add_argument("--file_dataset", action="store_true",
                         help="robnost")
     parser.add_argument("--n_records", type=int, default=100,
@@ -171,6 +173,7 @@ def main(args, override_pred_input=None, override_pred_output=None):
     params['max_to_keep'] = args.max_to_keep
     params['export_sampling'] = args.export_sampling
     params['repeat_dataset'] = args.repeat_dataset
+    params['repeat_dataset_n_times'] = args.repeat_dataset_n_times
     params['file_dataset'] = args.file_dataset
     params['n_records'] = args.n_records
 

@@ -152,7 +152,7 @@ def pred_input(params, logger, enc=None,
                "researchers was the fact that the unicorns spoke perfect English."
 
     if params['file_dataset']:
-        sdataset = StreamingFilesDataset(
+        dataset = StreamingFilesDataset(
             file_reader_job='tpu_worker/replica:0/task:0/device:CPU:0',
             worker_job='tpu_worker/replica:0/task:0/device:CPU:0',
             files=path_to_prompt,

@@ -164,7 +164,7 @@ def pred_input(params, logger, enc=None,
         )
         dataset = dataset.map(_parse_function, num_parallel_calls=1)
 
-        streaming_files_dataset = streaming_files_dataset.shard(2, 0)
+        dataset = dataset.shard(2, 0)
 
         dataset = dataset.batch(params['predict_batch_size'], drop_remainder=False)
         dataset = dataset.map(

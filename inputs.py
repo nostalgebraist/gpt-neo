@@ -152,24 +152,15 @@ def pred_input(params, logger, enc=None,
                "researchers was the fact that the unicorns spoke perfect English."
 
     if params['file_dataset']:
-        dataset = StreamingFilesDataset(
-            file_reader_job='worker/replica:0/task:0/device:CPU:0',
-            worker_job='worker/replica:0/task:0/device:CPU:0',
-            files=path_to_prompt,
-            filetype='tfrecord',
-            filename_shuffle_buffer_size=0,
-            num_parallel_reads=1,
-            batch_transfer_size=1,
-            sloppy=False
-        )
+        filenames = tf.io.gfile.glob(path_to_prompt)
+        dataset = tf.data.TFRecordDataset(filenames, buffer_size=0)
         dataset = dataset.map(_parse_function, num_parallel_calls=1)
-
-        dataset = dataset.shard(2, 0)
 
         dataset = dataset.batch(params['predict_batch_size'], drop_remainder=False)
         dataset = dataset.map(
             partial(_ensure_static_shape, batch_size=params['predict_batch_size'], n_ctx=params['n_ctx'])
         )
+        dataset = dataset.repeat()
     else:
         text = unicorns if path_to_prompt == "" else open(
             path_to_prompt, "r").read()

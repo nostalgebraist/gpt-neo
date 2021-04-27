@@ -198,6 +198,7 @@ def restore_ckpt_to_tf1_style(
             session_kwargs['target'] = estimator.config.cluster.get_master()
         sess = tf.Session(**session_kwargs)
 
+        print(tf.trainable_variables())
         saver = tf.train.Saver(
             tf.trainable_variables(),
             sharded=True,

@@ -164,7 +164,7 @@ def construct_prompt_variable(params, enc, path_to_prompt):
 
 
 def pred_input(params, logger, enc=None,
-               path_to_prompt="", prompt_variable=None):
+               path_to_prompt="",):
     unicorns = "In a shocking finding, scientists discovered a herd of unicorns living in a remote, " \
                "previously unexplored valley, in the Andes Mountains. Even more surprising to the " \
                "researchers was the fact that the unicorns spoke perfect English."
@@ -189,8 +189,7 @@ def pred_input(params, logger, enc=None,
         options.experimental_optimization.shuffle_and_repeat_fusion = False
         dataset = dataset.with_options(options)
     elif params['variable_prompt']:
-        if not prompt_variable:
-            raise ValueError("prompt_variable not supplied")
+        prompt_variable = construct_prompt_variable(params, enc, path_to_prompt)
         dataset = tf.data.Dataset.from_tensors(prompt_variable)
     else:
         text = unicorns if path_to_prompt == "" else open(

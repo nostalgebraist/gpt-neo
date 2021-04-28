@@ -11,7 +11,7 @@ from tensorflow.python.ops import resources
 from sample import sample_autoregressive
 from models.gpt2 import gpt2
 import math
-from rob_experimental import ScaffoldNonFinalizing
+# from rob_experimental import ScaffoldNonFinalizing
 
 
 from tensorflow.python.training.saver import BaseSaverBuilder
@@ -23,12 +23,6 @@ class OomReportingHook(tf.estimator.SessionRunHook):
                                            options=tf.RunOptions(
                                                report_tensor_allocations_upon_oom=True)
                                            )
-
-
-class ForceGetNextHook(tf.estimator.SessionRunHook):
-    """WIP"""
-    def before_run(self, run_context):
-        return tf.estimator.SessionRunArgs(fetches=[])
 
 
 class CastFromBFloat16SaverBuilder(BaseSaverBuilder):
@@ -208,7 +202,7 @@ def model_fn(features, labels, mode, params):
             "outputs": outputs}
 
         def scaffold_fn():
-            return ScaffoldNonFinalizing(
+            return Scaffold(
                 local_init_op=tf.group(
                     tf.train.Scaffold.default_local_init_op(),
                     lowering.copy_masters_to_slices(),

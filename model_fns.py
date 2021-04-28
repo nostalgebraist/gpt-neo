@@ -214,6 +214,9 @@ def model_fn(features, labels, mode, params):
             tf.logging.info(f"pvar collection: {repr(tf.get_collection('prompt_variable'))}")
 
             return tf.train.Scaffold(
+                ready_for_local_init_op=tf.group(
+                    tf.report_uninitialized_variables(ckpt_vars),
+                ),
                 local_init_op=tf.group(
                     tf.train.Scaffold.default_local_init_op(),
                     lowering.copy_masters_to_slices(),
@@ -221,7 +224,7 @@ def model_fn(features, labels, mode, params):
                     name="mtf_local_init_op"),
                 ready_op=tf.concat(
                     [tf.report_uninitialized_variables(var_list=ckpt_vars),
-                     # resources.report_uninitialized_resources()
+                     resources.report_uninitialized_resources()
                      ],
                     axis=0,
                     name="mtf_ready_op"),

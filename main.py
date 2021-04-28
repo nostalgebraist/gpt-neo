@@ -193,11 +193,9 @@ def main(args, override_pred_input=None, override_pred_output=None):
     # Set up TPUs and Estimator
     JOB_NAME = "robnost"
     if args.tpu == "colab":
-        tpu_cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(job_name=JOB_NAME)
-         if params["use_tpu"] else None
+        tpu_cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(job_name=JOB_NAME) if params["use_tpu"] else None
     else:
-        tpu_cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(job_name=JOB_NAME,
-            args.tpu) if params["use_tpu"] else None
+        tpu_cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(args.tpu, job_name=JOB_NAME) if params["use_tpu"] else None
 
     config = tpu_config.RunConfig(
         cluster=tpu_cluster_resolver,

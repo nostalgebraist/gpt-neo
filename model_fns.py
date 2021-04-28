@@ -209,10 +209,15 @@ def model_fn(features, labels, mode, params):
                 ckpt_vars,
                 sharded=True,
                 allow_empty=True)
+
+            pvar_init_ops = [v.initializer for v in tf.get_collection("prompt_variable")]
+            tf.logging.info(f"pvar collection: {repr(tf.get_collection('prompt_variable'))}")
+
             return tf.train.Scaffold(
                 local_init_op=tf.group(
                     tf.train.Scaffold.default_local_init_op(),
                     lowering.copy_masters_to_slices(),
+                    *pvar_init_ops,
                     name="mtf_local_init_op"),
                 ready_op=tf.concat(
                     [tf.report_uninitialized_variables(),

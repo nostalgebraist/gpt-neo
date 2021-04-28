@@ -148,18 +148,23 @@ def _ensure_static_shape(x, batch_size, n_ctx):
 def construct_prompt_variable(params, enc, path_to_prompt):
     def prompt_to_array(prompt):
         toks = enc.encode(prompt)
-        tokens = tf.pad(
+        tokens = np.pad(
             toks,
             [[0, params["n_ctx"] - len(toks)]],
             constant_values=params["padding_id"]
         )
-        t = tf.broadcast_to(tokens, [params["predict_batch_size"], params["n_ctx"]])
+        t = np.reshape(tokens, [1, params["n_ctx"]])
         return t
-
     with open(path_to_prompt, "r") as f:
         text = f.read()
 
     prompt_variable = tf.Variable(initial_value=prompt_to_array(text), dtype=tf.int32, name="prompt_variable")
+    prompt_placeholder = tf.placeholder(dtype=prompt_variable.dtype, shape=prompt_variable.shape.as_list(), name='prompt_placeholder')
+    prompt_assign_op = prompt_variable.assign(value=prompt_placeholder, name="prompt_assign_op")
+
+    tf.add_to_collection('prompt_variable', prompt_variable)
+    tf.add_to_collection('prompt_placeholder', prompt_placeholder)
+    tf.add_to_collection('prompt_assign_op', prompt_assign_op)
     return prompt_variable
 
 

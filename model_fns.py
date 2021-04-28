@@ -220,8 +220,9 @@ def model_fn(features, labels, mode, params):
                     *pvar_init_ops,
                     name="mtf_local_init_op"),
                 ready_op=tf.concat(
-                    [tf.report_uninitialized_variables(),
-                     resources.report_uninitialized_resources()],
+                    [tf.report_uninitialized_variables(var_list=ckpt_vars),
+                     # resources.report_uninitialized_resources()
+                     ],
                     axis=0,
                     name="mtf_ready_op"),
                 saver=saver

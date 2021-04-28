@@ -159,7 +159,7 @@ def construct_prompt_variable(params, enc, path_to_prompt):
     with open(path_to_prompt, "r") as f:
         text = f.read()
 
-    prompt_variable = tf.Variable(initial_value=prompt_to_array(text), dtype=tf.int64)
+    prompt_variable = tf.Variable(initial_value=prompt_to_array(text), dtype=tf.int32)
     return prompt_variable
 
 

@@ -202,6 +202,13 @@ def model_fn(features, labels, mode, params):
             "outputs": outputs}
 
         def scaffold_fn():
+            non_ckpt_vars = [v for v in tf.global_variables() if "prompt_variable" in v.name]
+            tf.logging.info(f"non_ckpt_vars: {repr(non_ckpt_vars)}")
+            ckpt_vars = [v for v in tf.global_variables() if "prompt_variable" not in v.name]
+            saver = tf.train.Saver(
+                ckpt_vars,
+                sharded=True,
+                allow_empty=True)
             return tf.train.Scaffold(
                 local_init_op=tf.group(
                     tf.train.Scaffold.default_local_init_op(),
@@ -211,7 +218,9 @@ def model_fn(features, labels, mode, params):
                     [tf.report_uninitialized_variables(),
                      resources.report_uninitialized_resources()],
                     axis=0,
-                    name="mtf_ready_op"))
+                    name="mtf_ready_op"),
+                saver=saver
+            )
 
         oom_hook = OomReportingHook()
 

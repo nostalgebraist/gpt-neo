@@ -60,6 +60,7 @@ def sample_autoregressive(partial_sequences,
     Returns:
         a Tensor with shape [<batch_dims>, length_dim]
     """
+    print(f"sample_autoregressive: got stop_at_token: {repr(stop_at_token)}")
 
     inputs = partial_sequences  # Partial sequences to fill in
     batch_dims = inputs.shape.dims[:-1]

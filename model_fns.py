@@ -202,7 +202,7 @@ def model_fn(features, labels, mode, params):
             "outputs": outputs}
 
         def scaffold_fn():
-            return Scaffold(
+            return tf.train.Scaffold(
                 local_init_op=tf.group(
                     tf.train.Scaffold.default_local_init_op(),
                     lowering.copy_masters_to_slices(),

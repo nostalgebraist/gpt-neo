@@ -7,7 +7,7 @@ from tensorflow.python.tpu import tpu_config, tpu_estimator
 from tensorflow_estimator.python.estimator import estimator as estimator_lib
 from utils import save_config, expand_attention_types_params, yes_or_no, remove_gs_or_filepath, setup_logging, \
     check_dataset
-from inputs import sequential_input, pred_input, handle_pred_output, mlm_sample_text, generic_text
+from inputs import sequential_input, pred_input, handle_pred_output, mlm_sample_text, generic_text, construct_prompt_variable
 from export import export_model
 from model_fns import model_fn
 from data.encoders import fetch_encoder
@@ -77,7 +77,8 @@ def make_argparser():
                         help="robnost")
     parser.add_argument("--n_records", type=int, default=100,
                         help="robnost")
-
+    parser.add_argument("--variable_prompt", action="store_true",
+                        help="robnost")
     return parser
 
 
@@ -124,6 +125,10 @@ def main(args, override_pred_input=None, override_pred_output=None):
 
     pred_input_fn = partial(
         pred_input_fn, path_to_prompt=args.prompt, logger=logger, enc=encoder)
+
+    if args.variable_prompt:
+        prompt_variable = construct_prompt_variable(params, encoder, path_to_prompt=args.prompt)
+        pred_input_fn = partial(pred_input_fn, prompt_variable=prompt_variable)
 
     # Sample from Dataset if check dataset flag is on
     if args.check_dataset:
@@ -176,6 +181,7 @@ def main(args, override_pred_input=None, override_pred_output=None):
     params['repeat_dataset_n_times'] = args.repeat_dataset_n_times
     params['file_dataset'] = args.file_dataset
     params['n_records'] = args.n_records
+    params['variable_prompt'] = args.variable_prompt
 
     logger.info(f"params = {params}")
 
@@ -247,6 +253,8 @@ def main(args, override_pred_input=None, override_pred_output=None):
         logger.info("Predictions generated")
 
         if args.return_to_caller:
+            if args.variable_prompt:
+                return predictions, params, estimator, prompt_variable
             return predictions, params, estimator
 
         enc = fetch_encoder(params)

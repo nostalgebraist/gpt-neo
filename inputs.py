@@ -145,8 +145,26 @@ def _ensure_static_shape(x, batch_size, n_ctx):
     return tf.reshape(x[:batch_size, :n_ctx], [batch_size, n_ctx])
 
 
+def construct_prompt_variable(params, enc, path_to_prompt):
+    def prompt_to_array(prompt):
+        toks = enc.encode(prompt)
+        tokens = tf.pad(
+            toks,
+            [[0, params["n_ctx"] - len(toks)]],
+            constant_values=params["padding_id"]
+        )
+        t = tf.broadcast_to(tokens, [params["predict_batch_size"], params["n_ctx"]])
+        return t
+
+    with open(path_to_prompt, "r") as f:
+        text = f.read()
+
+    prompt_variable = tf.Variable(initial_value=prompt_to_array(text), dtype=tf.int64)
+    return prompt_variable
+
+
 def pred_input(params, logger, enc=None,
-               path_to_prompt=""):
+               path_to_prompt="", prompt_variable=None):
     unicorns = "In a shocking finding, scientists discovered a herd of unicorns living in a remote, " \
                "previously unexplored valley, in the Andes Mountains. Even more surprising to the " \
                "researchers was the fact that the unicorns spoke perfect English."
@@ -170,6 +188,10 @@ def pred_input(params, logger, enc=None,
         options.experimental_optimization.noop_elimination = False
         options.experimental_optimization.shuffle_and_repeat_fusion = False
         dataset = dataset.with_options(options)
+    elif params['variable_prompt']:
+        if not prompt_variable:
+            raise ValueError("prompt_variable not supplied")
+        dataset = tf.data.Dataset.from_tensors(prompt_variable)
     else:
         text = unicorns if path_to_prompt == "" else open(
             path_to_prompt, "r").read()

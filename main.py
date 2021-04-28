@@ -191,11 +191,12 @@ def main(args, override_pred_input=None, override_pred_output=None):
         task_descriptors[t]["init_fn"](params)
 
     # Set up TPUs and Estimator
+    JOB_NAME = "robnost"
     if args.tpu == "colab":
-        tpu_cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
+        tpu_cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(job_name=JOB_NAME
         ) if params["use_tpu"] else None
     else:
-        tpu_cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
+        tpu_cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(job_name=JOB_NAME
             args.tpu) if params["use_tpu"] else None
 
     config = tpu_config.RunConfig(
@@ -209,7 +210,9 @@ def main(args, override_pred_input=None, override_pred_output=None):
             num_shards=mesh_shape.size,
             iterations_per_loop=params["iterations"],
             num_cores_per_replica=1,
-            per_host_input_for_training=tpu_config.InputPipelineConfig.BROADCAST))
+            per_host_input_for_training=tpu_config.InputPipelineConfig.BROADCAST),
+            tpu_job_name=job_name
+        )
 
     estimator = tpu_estimator.TPUEstimator(
         use_tpu=params["use_tpu"],

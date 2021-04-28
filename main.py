@@ -209,7 +209,7 @@ def main(args, override_pred_input=None, override_pred_output=None):
             iterations_per_loop=params["iterations"],
             num_cores_per_replica=1,
             per_host_input_for_training=tpu_config.InputPipelineConfig.BROADCAST),
-            tpu_job_name=job_name
+            tpu_job_name=JOB_NAME
         )
 
     estimator = tpu_estimator.TPUEstimator(

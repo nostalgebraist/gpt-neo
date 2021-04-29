@@ -239,8 +239,8 @@ def main(args, override_pred_input=None, override_pred_output=None):
     }
 
     if args.export:
-        print(("params['use_tpu']", params['use_tpu']))
-        print(("estimator._export_to_cpu", estimator._export_to_cpu))
+        logger.info(("params['use_tpu']", params['use_tpu']))
+        logger.info(("estimator._export_to_cpu", estimator._export_to_cpu))
         export_model(estimator, "export", params)
         return
 
@@ -300,7 +300,7 @@ def main(args, override_pred_input=None, override_pred_output=None):
         while current_step < params["train_steps"]:
             next_eval = args.eval_every * \
                 ((current_step // args.eval_every) + 1)
-            print(f"next_eval: {next_eval}")
+            logger.info(f"next_eval: {next_eval}")
             next_eval = min(next_eval, params["train_steps"])
 
             estimator.train(input_fn=partial(

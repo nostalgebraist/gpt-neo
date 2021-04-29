@@ -299,10 +299,10 @@ def main(args, override_pred_input=None, override_pred_output=None):
 
     elif has_predict_or_eval_steps_or_eval_tasks:
         # Eval and train - stop and predict and/or eval every checkpoint
-        while current_step < params["train_steps"]:
-            if args.eval_at_load and params["eval_steps"] > 0:
-                run_eval()
+        if args.eval_at_load and params["eval_steps"] > 0:
+            run_eval()
 
+        while current_step < params["train_steps"]:
             next_eval = args.eval_every * \
                 ((current_step // args.eval_every) + 1)
             logger.info(f"next_eval: {next_eval}")

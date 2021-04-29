@@ -31,6 +31,8 @@ def make_argparser():
                         default=5000, help="Save a model checkpoint every X steps.")
     parser.add_argument("--eval_every", type=int,
                         default=1, help="Eval every X steps.")
+    parser.add_argument("--eval_at_load", action="store_true",
+                        help="robnost")
     parser.add_argument("--auto_layout", action="store_true", help="If set, generates and prints the most memory "
                                                                    "efficient layout according to MTF auto layout.")
     parser.add_argument("--auto_layout_and_mesh_shape", action="store_true",
@@ -298,6 +300,9 @@ def main(args, override_pred_input=None, override_pred_output=None):
     elif has_predict_or_eval_steps_or_eval_tasks:
         # Eval and train - stop and predict and/or eval every checkpoint
         while current_step < params["train_steps"]:
+            if args.eval_at_load and params["eval_steps"] > 0:
+                run_eval()
+
             next_eval = args.eval_every * \
                 ((current_step // args.eval_every) + 1)
             logger.info(f"next_eval: {next_eval}")

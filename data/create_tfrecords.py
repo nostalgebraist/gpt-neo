@@ -120,6 +120,7 @@ def enforce_min_unique(seqs, min_unique_tokens, enc):
             text = enc.decode(seq)
             print(f"excluding with {len(set(seq))} unique tokens:\n\n{repr(text)}\n\n")
         else:
+            print(f"ok: {len(set(seq))}, {len(seq)} | ", end="")
             yield seq
 
 

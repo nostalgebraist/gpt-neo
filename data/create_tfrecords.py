@@ -14,7 +14,7 @@ from itertools import repeat
 import re
 from pprint import pprint
 import numpy as np
-from tqdm.autonotebook import tqdm
+from tqdm import tqdm
 
 logging.getLogger("transformers").setLevel(logging.ERROR)
 

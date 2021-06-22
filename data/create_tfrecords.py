@@ -39,6 +39,8 @@ parser.add_argument("--write_dataset_config", action="store_true",
                     help="Write the dataset config file on completion")
 parser.add_argument("--processes", type=int, default=0,
                     help="Number of processes to use. Defaults to cpu count.")
+parser.add_argument("--min-unique-tokens", type=int, default=0,
+                    help="Exclude repetitive documents with fewer than this many unique tokens")
 
 args = parser.parse_args()
 if not args.output_dir.endswith("/"):
@@ -112,6 +114,20 @@ def split_list(l, n):
     return [l[i:i + n] for i in range(0, len(l), n)]
 
 
+def enforce_min_unique(seqs, min_unique_tokens, enc):
+    for seq in seqs:
+        if len(set(seq)) < min_unique_tokens:
+            text = enc.decode(seq)
+            print(f"excluding with {len(set(seq))} unique tokens:\n\n{repr(text)}\n\n")
+        else:
+            yield seq
+
+
+def split_list_and_enforce_min_unique(l, n, min_unique_tokens, enc):
+    seqs = [l[i:i + n] for i in range(0, len(l), n)]
+    return list(enforce_min_unique(seqs, min_unique_tokens, enc))
+
+
 def archive_to_tokens(f, encoder, args):
     # Generator that yields the contents of the files in an archive
     # if data_to_prepend is not None, prepend data_to_prepend + a EOS separator to the encoded data
@@ -124,7 +140,7 @@ def archive_to_tokens(f, encoder, args):
         # read document from lmd and append separator token
         doc = encoder.encode(doc) + args.separator
         # split into n_ctx + 1 size chunks
-        yield split_list(doc, args.chunk_size)
+        yield split_list_and_enforce_min_unique(doc, args.chunk_size, args.min_unique_tokens, encoder)
 
 
 def write_files(files, files_per, output_dir, out_name, start_no, write_remainder=False, process_no=None):

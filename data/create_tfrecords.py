@@ -13,6 +13,7 @@ from multiprocessing import Pool, cpu_count
 from itertools import repeat
 import re
 from pprint import pprint
+import numpy as np
 
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
@@ -42,6 +43,8 @@ parser.add_argument("--processes", type=int, default=0,
                     help="Number of processes to use. Defaults to cpu count.")
 parser.add_argument("--min-unique-tokens", type=int, default=0,
                     help="Exclude repetitive documents with fewer than this many unique tokens")
+parser.add_argument("--shuffle-chunks",
+                    default=False, action="store_true", help="shuffle at sequence level before saving")
 
 args = parser.parse_args()
 if not args.output_dir.endswith("/"):
@@ -238,6 +241,8 @@ def create_tfrecords(params, write_remainder=True, write_every_n_files=1, save_c
 
             if len(tokenized_files_array) >= args.files_per * write_every_n_files:  # write every n files
                 tokenized_files_array = list(enforce_min_unique(tokenized_files_array, args.min_unique_tokens, enc))
+                if args.shuffle_chunks:
+                    np.random.shuffle(tokenized_files_array)
                 _tfrecord_count, remainder = write_files(tokenized_files_array, files_per=args.files_per,
                                                          output_dir=args.output_dir, out_name=args.name,
                                                          start_no=tfrecord_count, process_no=process_no)
@@ -254,6 +259,8 @@ def create_tfrecords(params, write_remainder=True, write_every_n_files=1, save_c
 
     if len(tokenized_files_array) >= args.files_per:  # also write at end
         tokenized_files_array = list(enforce_min_unique(tokenized_files_array, args.min_unique_tokens, enc))
+        if args.shuffle_chunks:
+            np.random.shuffle(tokenized_files_array)
         _tfrecord_count, remainder = write_files(tokenized_files_array, files_per=args.files_per,
                                                  output_dir=args.output_dir, out_name=args.name,
                                                  start_no=tfrecord_count, process_no=process_no)
@@ -266,8 +273,11 @@ def create_tfrecords(params, write_remainder=True, write_every_n_files=1, save_c
     else:
         remainder = tokenized_files_array  # add remaining to remainder
 
+    remainder = list(enforce_min_unique(remainder, args.min_unique_tokens, enc))
     if write_remainder:
         # write out the remaining files even if there's less than files_per
+        if args.shuffle_chunks:
+            np.random.shuffle(remainder)
         write_files(remainder, files_per=args.files_per, output_dir=args.output_dir, out_name=args.name,
                     start_no=tfrecord_count, write_remainder=True)
 

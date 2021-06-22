@@ -140,7 +140,8 @@ def archive_to_tokens(f, encoder, args):
         # read document from lmd and append separator token
         doc = encoder.encode(doc) + args.separator
         # split into n_ctx + 1 size chunks
-        yield split_list_and_enforce_min_unique(doc, args.chunk_size, args.min_unique_tokens, encoder)
+        # yield split_list_and_enforce_min_unique(doc, args.chunk_size, args.min_unique_tokens, encoder)
+        yield split_list(doc, args.chunk_size)
 
 
 def write_files(files, files_per, output_dir, out_name, start_no, write_remainder=False, process_no=None):
@@ -233,6 +234,7 @@ def create_tfrecords(params, write_remainder=True, write_every_n_files=1, save_c
             tokenized_files_array.extend(tokenized_files)
 
             if len(tokenized_files_array) >= args.files_per * write_every_n_files:  # write every n files
+                tokenized_files_array = list(enforce_min_unique(tokenized_files_array, args.min_unique_tokens, enc))
                 _tfrecord_count, remainder = write_files(tokenized_files_array, files_per=args.files_per,
                                                          output_dir=args.output_dir, out_name=args.name,
                                                          start_no=tfrecord_count, process_no=process_no)

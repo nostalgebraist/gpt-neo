@@ -12,6 +12,7 @@ import logging
 from multiprocessing import Pool, cpu_count
 from itertools import repeat
 import re
+from pprint import pprint
 
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
@@ -118,9 +119,10 @@ def enforce_min_unique(seqs, min_unique_tokens, enc):
     for seq in seqs:
         if len(set(seq)) < min_unique_tokens:
             text = enc.decode(seq)
-            print(f"excluding with {len(set(seq))} unique tokens:\n\n{repr(text)}\n\n")
+            print(f"excluding with {len(set(seq))} unique tokens:\n\n")
+            pprint(text)
+            print()
         else:
-            print(f"ok: {len(set(seq))}, {len(seq)} | ", end="")
             yield seq
 
 

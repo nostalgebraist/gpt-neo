@@ -14,6 +14,7 @@ from itertools import repeat
 import re
 from pprint import pprint
 import numpy as np
+from tqdm.autonotebook import tqdm
 
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
@@ -119,7 +120,8 @@ def split_list(l, n):
 
 
 def enforce_min_unique(seqs, min_unique_tokens, enc):
-    for seq in seqs:
+    print("enforce_min_unique")
+    for seq in tqdm(seqs, mininterval=1, smoothing=0):
         if len(set(seq)) < min_unique_tokens:
             text = enc.decode(seq)
             print(f"excluding with {len(set(seq))} unique tokens:\n\n")
@@ -217,7 +219,7 @@ def create_tfrecords(params, write_remainder=True, write_every_n_files=1, save_c
     data_to_prepend = []
     tokenized_files_array = []
 
-    for f in files:
+    for f in tqdm(files, mininterval=5, smoothing=0):
         for tokenized_files in archive_to_tokens(f, enc, args):
             files_processed += 1
             if files_processed < resume_files_processed:

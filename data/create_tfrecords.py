@@ -251,6 +251,7 @@ def create_tfrecords(params, write_remainder=True, write_every_n_files=1, save_c
                         f"{files_processed}, {tfrecord_count}")
 
     if len(tokenized_files_array) >= args.files_per:  # also write at end
+        tokenized_files_array = list(enforce_min_unique(tokenized_files_array, args.min_unique_tokens, enc))
         _tfrecord_count, remainder = write_files(tokenized_files_array, files_per=args.files_per,
                                                  output_dir=args.output_dir, out_name=args.name,
                                                  start_no=tfrecord_count, process_no=process_no)

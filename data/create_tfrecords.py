@@ -215,7 +215,7 @@ def create_tfrecords(params, write_remainder=True, write_every_n_files=1, save_c
     data_to_prepend = []
     tokenized_files_array = []
 
-    for f in tqdm(files, mininterval=5, smoothing=0):
+    for f in tqdm(files, mininterval=10, smoothing=0):
         for tokenized_files in archive_to_tokens(f, enc, args):
             files_processed += 1
             if files_processed < resume_files_processed:
@@ -271,11 +271,12 @@ def create_tfrecords(params, write_remainder=True, write_every_n_files=1, save_c
     else:
         remainder = tokenized_files_array  # add remaining to remainder
 
+    if args.shuffle_chunks:
+        np.random.shuffle(remainder)
+
     remainder = list(enforce_min_unique(remainder, args.min_unique_tokens, enc))
     if write_remainder:
         # write out the remaining files even if there's less than files_per
-        if args.shuffle_chunks:
-            np.random.shuffle(remainder)
         write_files(remainder, files_per=args.files_per, output_dir=args.output_dir, out_name=args.name,
                     start_no=tfrecord_count, write_remainder=True)
 

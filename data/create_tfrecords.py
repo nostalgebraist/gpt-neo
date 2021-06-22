@@ -12,9 +12,7 @@ import logging
 from multiprocessing import Pool, cpu_count
 from itertools import repeat
 import re
-from pprint import pprint
 import numpy as np
-from tqdm import tqdm
 
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
@@ -124,9 +122,7 @@ def enforce_min_unique(seqs, min_unique_tokens, enc):
     for seq in tqdm(seqs, mininterval=1, smoothing=0):
         if len(set(seq)) < min_unique_tokens:
             text = enc.decode(seq)
-            print(f"excluding with {len(set(seq))} unique tokens:\n\n")
-            pprint(text)
-            print()
+            print(f"excluding with {len(set(seq))} unique tokens:\n\n{repr(text)}\n\n")
         else:
             yield seq
 

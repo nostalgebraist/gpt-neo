@@ -146,6 +146,7 @@ def archive_to_tokens(f, encoder, args, prefix=[]):
         # split into n_ctx + 1 size chunks
         # yield split_list_and_enforce_min_unique(doc, args.chunk_size, args.min_unique_tokens, encoder)
         yield split_list(prefix + doc, args.chunk_size)
+        prefix = []
 
 
 def write_files(files, files_per, output_dir, out_name, start_no, write_remainder=False, process_no=None):

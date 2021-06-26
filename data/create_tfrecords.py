@@ -132,7 +132,7 @@ def split_list_and_enforce_min_unique(l, n, min_unique_tokens, enc):
     return list(enforce_min_unique(seqs, min_unique_tokens, enc))
 
 
-def archive_to_tokens(f, encoder, args):
+def archive_to_tokens(f, encoder, args, prefix=[]):
     # Generator that yields the contents of the files in an archive
     # if data_to_prepend is not None, prepend data_to_prepend + a EOS separator to the encoded data
     reader = Reader(f)
@@ -145,7 +145,7 @@ def archive_to_tokens(f, encoder, args):
         doc = encoder.encode(doc) + args.separator
         # split into n_ctx + 1 size chunks
         # yield split_list_and_enforce_min_unique(doc, args.chunk_size, args.min_unique_tokens, encoder)
-        yield split_list(doc, args.chunk_size)
+        yield split_list(prefix + doc, args.chunk_size)
 
 
 def write_files(files, files_per, output_dir, out_name, start_no, write_remainder=False, process_no=None):
@@ -216,7 +216,7 @@ def create_tfrecords(params, write_remainder=True, write_every_n_files=1, save_c
     tokenized_files_array = []
 
     for f in tqdm(files, mininterval=10, smoothing=0):
-        for tokenized_files in archive_to_tokens(f, enc, args):
+        for tokenized_files in archive_to_tokens(f, enc, args, prefix=data_to_prepend):
             files_processed += 1
             if files_processed < resume_files_processed:
                 continue  # resume from checkpoint
@@ -226,14 +226,16 @@ def create_tfrecords(params, write_remainder=True, write_every_n_files=1, save_c
             if n_tokens < args.chunk_size:
                 data = tokenized_files.pop(-1)
                 if n_tokens >= args.minimum_size:
-                    data_to_prepend.extend(data)
+                    data_to_prepend = data
                 else:
+                    data_to_prepend = []
                     discarded_files += 1
 
-            if len(data_to_prepend) >= args.chunk_size:
-                # if length of data_to_prepend becomes greater than chunk size, add concatted files to tokenized files
-                tokenized_files_array.append(data_to_prepend[:args.chunk_size])
-                data_to_prepend = data_to_prepend[args.chunk_size:]
+            # if len(data_to_prepend) >= args.chunk_size:
+            #     # if length of data_to_prepend becomes greater than chunk size, add concatted files to tokenized files
+            #     tokenized_files_array.append(data_to_prepend[:args.chunk_size])
+            #     data_to_prepend = data_to_prepend[args.chunk_size:]
+
             # add tokenized files > chunk size to main array
             tokenized_files_array.extend(tokenized_files)
 

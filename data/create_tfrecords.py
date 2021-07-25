@@ -217,8 +217,10 @@ def create_tfrecords(params, write_remainder=True, write_every_n_files=1, save_c
     data_to_prepend = []
     tokenized_files_array = []
 
+    all_sequences_across_epochs = []
+
     for ep_ix in range(args.n_epochs):
-        print(f'starting epoch {ep_ix}\n\t{len(data_to_prepend)} tokens rolled over from last epoch')
+        print(f'starting epoch {ep_ix}\n\t{len(all_sequences_across_epochs)} sequences so far\n\t{len(data_to_prepend)} tokens rolled over from last epoch')
         for f in tqdm(files, mininterval=10, smoothing=0):
             for tokenized_files in archive_to_tokens(f, enc, args, prefix=data_to_prepend):
                 files_processed += 1
@@ -281,10 +283,15 @@ def create_tfrecords(params, write_remainder=True, write_every_n_files=1, save_c
             np.random.shuffle(remainder)
 
         remainder = list(enforce_min_unique(remainder, args.min_unique_tokens, enc))
-        if write_remainder:
-            # write out the remaining files even if there's less than files_per
-            write_files(remainder, files_per=args.files_per, output_dir=args.output_dir, out_name=args.name,
-                        start_no=tfrecord_count, write_remainder=True)
+        all_sequences_across_epochs.extend(remainder)
+        # if write_remainder:
+        #     # write out the remaining files even if there's less than files_per
+        #     write_files(remainder, files_per=args.files_per, output_dir=args.output_dir, out_name=args.name,
+        #                 start_no=tfrecord_count, write_remainder=True)
+
+    write_files(all_sequences_across_epochs, files_per=args.files_per, output_dir=args.output_dir, out_name=args.name,
+                start_no=tfrecord_count, write_remainder=True)
+
 
     successful_files = files_processed - discarded_files
     return {"discarded": discarded_files, "processed": files_processed, "successful": successful_files}

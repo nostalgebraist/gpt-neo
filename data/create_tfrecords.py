@@ -44,6 +44,7 @@ parser.add_argument("--min-unique-tokens", type=int, default=0,
                     help="Exclude repetitive documents with fewer than this many unique tokens")
 parser.add_argument("--shuffle-chunks",
                     default=False, action="store_true", help="shuffle at sequence level before saving")
+parser.add_argument("--n-epochs", type=int, default=1)
 
 args = parser.parse_args()
 if not args.output_dir.endswith("/"):
@@ -216,72 +217,74 @@ def create_tfrecords(params, write_remainder=True, write_every_n_files=1, save_c
     data_to_prepend = []
     tokenized_files_array = []
 
-    for f in tqdm(files, mininterval=10, smoothing=0):
-        for tokenized_files in archive_to_tokens(f, enc, args, prefix=data_to_prepend):
-            files_processed += 1
-            if files_processed < resume_files_processed:
-                continue  # resume from checkpoint
+    for ep_ix in range(args.n_epochs):
+        print(f'starting epoch {ep_ix}\n\t{len(data_to_prepend)} tokens rolled over from last epoch')
+        for f in tqdm(files, mininterval=10, smoothing=0):
+            for tokenized_files in archive_to_tokens(f, enc, args, prefix=data_to_prepend):
+                files_processed += 1
+                if files_processed < resume_files_processed:
+                    continue  # resume from checkpoint
 
-            # if the last chunk < chunk size, but > minimum_size, take it and append it to the beginning of the next file
-            data_to_prepend = []
-            n_tokens = len(tokenized_files[-1])
-            if n_tokens < args.chunk_size:
-                data = tokenized_files.pop(-1)
-                if n_tokens >= args.minimum_size:
-                    data_to_prepend = data
-                else:
-                    discarded_files += 1
+                # if the last chunk < chunk size, but > minimum_size, take it and append it to the beginning of the next file
+                data_to_prepend = []
+                n_tokens = len(tokenized_files[-1])
+                if n_tokens < args.chunk_size:
+                    data = tokenized_files.pop(-1)
+                    if n_tokens >= args.minimum_size:
+                        data_to_prepend = data
+                    else:
+                        discarded_files += 1
 
-            # if len(data_to_prepend) >= args.chunk_size:
-            #     # if length of data_to_prepend becomes greater than chunk size, add concatted files to tokenized files
-            #     tokenized_files_array.append(data_to_prepend[:args.chunk_size])
-            #     data_to_prepend = data_to_prepend[args.chunk_size:]
+                # if len(data_to_prepend) >= args.chunk_size:
+                #     # if length of data_to_prepend becomes greater than chunk size, add concatted files to tokenized files
+                #     tokenized_files_array.append(data_to_prepend[:args.chunk_size])
+                #     data_to_prepend = data_to_prepend[args.chunk_size:]
 
-            # add tokenized files > chunk size to main array
-            tokenized_files_array.extend(tokenized_files)
+                # add tokenized files > chunk size to main array
+                tokenized_files_array.extend(tokenized_files)
 
-            if len(tokenized_files_array) >= args.files_per * write_every_n_files:  # write every n files
-                tokenized_files_array = list(enforce_min_unique(tokenized_files_array, args.min_unique_tokens, enc))
-                if args.shuffle_chunks:
-                    np.random.shuffle(tokenized_files_array)
-                _tfrecord_count, remainder = write_files(tokenized_files_array, files_per=args.files_per,
-                                                         output_dir=args.output_dir, out_name=args.name,
-                                                         start_no=tfrecord_count, process_no=process_no)
-                # update progress bar
-                pbar.update(_tfrecord_count - tfrecord_count)
-                pbar.set_description(
-                    f"Writing TFRecord Files to {args.output_dir}. Parsed {files_processed} input files. files_written ")
-                tfrecord_count = _tfrecord_count
-                # add remaining files to next chunk
-                tokenized_files_array = remainder if remainder is not None else []
-                with open(checkpoint_path, "w") as checkpoint_file:
-                    checkpoint_file.write(
-                        f"{files_processed}, {tfrecord_count}")
+                if len(tokenized_files_array) >= args.files_per * write_every_n_files:  # write every n files
+                    tokenized_files_array = list(enforce_min_unique(tokenized_files_array, args.min_unique_tokens, enc))
+                    if args.shuffle_chunks:
+                        np.random.shuffle(tokenized_files_array)
+                    _tfrecord_count, remainder = write_files(tokenized_files_array, files_per=args.files_per,
+                                                             output_dir=args.output_dir, out_name=args.name,
+                                                             start_no=tfrecord_count, process_no=process_no)
+                    # update progress bar
+                    pbar.update(_tfrecord_count - tfrecord_count)
+                    pbar.set_description(
+                        f"Writing TFRecord Files to {args.output_dir}. Parsed {files_processed} input files. files_written ")
+                    tfrecord_count = _tfrecord_count
+                    # add remaining files to next chunk
+                    tokenized_files_array = remainder if remainder is not None else []
+                    with open(checkpoint_path, "w") as checkpoint_file:
+                        checkpoint_file.write(
+                            f"{files_processed}, {tfrecord_count}")
 
-    if len(tokenized_files_array) >= args.files_per:  # also write at end
-        tokenized_files_array = list(enforce_min_unique(tokenized_files_array, args.min_unique_tokens, enc))
+        if len(tokenized_files_array) >= args.files_per:  # also write at end
+            tokenized_files_array = list(enforce_min_unique(tokenized_files_array, args.min_unique_tokens, enc))
+            if args.shuffle_chunks:
+                np.random.shuffle(tokenized_files_array)
+            _tfrecord_count, remainder = write_files(tokenized_files_array, files_per=args.files_per,
+                                                     output_dir=args.output_dir, out_name=args.name,
+                                                     start_no=tfrecord_count, process_no=process_no)
+            pbar.update(_tfrecord_count - tfrecord_count)
+            pbar.set_description(
+                f"Writing TFRecord Files to {args.output_dir}. Parsed {files_processed} input files. files_written ")
+            tfrecord_count = _tfrecord_count
+            with open(checkpoint_path, "w") as checkpoint_file:
+                checkpoint_file.write(f"{files_processed}, {tfrecord_count}")
+        else:
+            remainder = tokenized_files_array  # add remaining to remainder
+
         if args.shuffle_chunks:
-            np.random.shuffle(tokenized_files_array)
-        _tfrecord_count, remainder = write_files(tokenized_files_array, files_per=args.files_per,
-                                                 output_dir=args.output_dir, out_name=args.name,
-                                                 start_no=tfrecord_count, process_no=process_no)
-        pbar.update(_tfrecord_count - tfrecord_count)
-        pbar.set_description(
-            f"Writing TFRecord Files to {args.output_dir}. Parsed {files_processed} input files. files_written ")
-        tfrecord_count = _tfrecord_count
-        with open(checkpoint_path, "w") as checkpoint_file:
-            checkpoint_file.write(f"{files_processed}, {tfrecord_count}")
-    else:
-        remainder = tokenized_files_array  # add remaining to remainder
+            np.random.shuffle(remainder)
 
-    if args.shuffle_chunks:
-        np.random.shuffle(remainder)
-
-    remainder = list(enforce_min_unique(remainder, args.min_unique_tokens, enc))
-    if write_remainder:
-        # write out the remaining files even if there's less than files_per
-        write_files(remainder, files_per=args.files_per, output_dir=args.output_dir, out_name=args.name,
-                    start_no=tfrecord_count, write_remainder=True)
+        remainder = list(enforce_min_unique(remainder, args.min_unique_tokens, enc))
+        if write_remainder:
+            # write out the remaining files even if there's less than files_per
+            write_files(remainder, files_per=args.files_per, output_dir=args.output_dir, out_name=args.name,
+                        start_no=tfrecord_count, write_remainder=True)
 
     successful_files = files_processed - discarded_files
     return {"discarded": discarded_files, "processed": files_processed, "successful": successful_files}

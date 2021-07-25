@@ -215,11 +215,12 @@ def create_tfrecords(params, write_remainder=True, write_every_n_files=1, save_c
         checkpoint_path, resume_from_checkpoint)
 
     data_to_prepend = []
-    tokenized_files_array = []
 
     all_sequences_across_epochs = []
 
     for ep_ix in range(args.n_epochs):
+        tokenized_files_array = []
+
         print(f'starting epoch {ep_ix}\n\t{len(all_sequences_across_epochs)} sequences so far\n\t{len(data_to_prepend)} tokens rolled over from last epoch')
         for f in tqdm(files, mininterval=10, smoothing=0):
             for tokenized_files in archive_to_tokens(f, enc, args, prefix=data_to_prepend):
